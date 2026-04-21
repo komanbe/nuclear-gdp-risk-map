@@ -1,4 +1,4 @@
-// Top-35 metros by nominal GDP (2022–2023, illustrative).
+// Top-40 metros by nominal GDP (2022–2023, illustrative).
 // Sources: Brookings Global Metro Monitor, Oxford Economics Global Cities,
 // national statistical offices. Values rounded to the nearest $10B.
 // r_km ≈ effective metro radius used for damage-overlap fraction.

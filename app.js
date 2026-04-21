@@ -45,7 +45,7 @@ const I18N = {
 
     // fig / legend
     fig_label_idle: "入力待ち",
-    fig_body_idle:  "左パネルで弾頭出力を選び、地図上の任意の点をクリックすると起爆をシミュレート。3つの標準被害リングと、世界GDP上位35都市の実効メトロ円との重なりから、露出GDPを計算します。",
+    fig_body_idle:  "左パネルで弾頭出力を選び、地図上の任意の点をクリックすると起爆をシミュレート。3つの標準被害リングと、世界GDP上位40都市の実効メトロ円との重なりから、露出GDPを計算します。",
     legend_title:   "被害リング",
     legend_severe:  "5 psi · 深刻な構造破壊",
     legend_thermal: "3度熱傷",
@@ -117,7 +117,7 @@ const I18N = {
     src:           'Metro GDP: <span class="term" data-def-ja="Brookings Institution と JPMorgan Chase が共同で発行する、都市GDP・生産性の国際比較データセット。" data-def-en="International dataset of metro-level GDP and productivity, jointly published by Brookings Institution and JPMorgan Chase.">Brookings Global Metro Monitor</span> / Oxford Economics (indicative, 2022–2023). Blast radii: <span class="term" data-def-ja="1977年版『The Effects of Nuclear Weapons』。核兵器効果の標準参考書。本ツールの爆発半径スケーリングもここに基づく。" data-def-en="Glasstone &amp; Dolan (1977), ‘The Effects of Nuclear Weapons’ — standard reference; the blast scaling in this tool follows its airburst tables.">Glasstone &amp; Dolan (1977)</span>.',
 
     fig_label_idle: "Awaiting input",
-    fig_body_idle:  "Select a yield in the left panel, then click any point on the map. Three standard damage rings are overlaid on the effective discs of the top 35 metros by GDP and the exposed economic mass is computed.",
+    fig_body_idle:  "Select a yield in the left panel, then click any point on the map. Three standard damage rings are overlaid on the effective discs of the top 40 metros by GDP and the exposed economic mass is computed.",
     legend_title:   "Damage rings",
     legend_severe:  "5 psi · severe structural damage",
     legend_thermal: "3rd-degree burns",

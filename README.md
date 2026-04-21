@@ -18,7 +18,7 @@ Three observations drive the design:
 
 - Click any point on the map to detonate a warhead (yield + burst type selectable).
 - Renders three standard damage rings (5 psi / 3rd-degree thermal / 1 psi).
-- For each of the top 35 metros, computes the overlap between each damage ring and the metro's effective disc, and aggregates **exposed GDP and population** as a first-order liability estimate.
+- For each of the top 40 metros, computes the overlap between each damage ring and the metro's effective disc, and aggregates **exposed GDP and population** as a first-order liability estimate.
 - Click any metro bubble to inspect its standalone exposure profile.
 
 ## Data and scaling
