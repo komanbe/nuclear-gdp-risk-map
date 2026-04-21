@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>核兵器 GDP リスクマップ · Nuclear GDP Risk Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ============ SPLASH / FIRST VIEW ============ -->
+  <div id="splash" class="splash-on">
+    <div class="splash-frame">
+
+      <div class="splash-top">
+        <span class="st-left">OUTRIDER FOUNDATION  ·  REFERENCE INSTRUMENT</span>
+        <span class="st-right" id="splash-date">—</span>
+      </div>
+
+      <div class="splash-rings" aria-hidden="true">
+        <div class="splash-ring r1"></div>
+        <div class="splash-ring r2"></div>
+        <div class="splash-ring r3"></div>
+        <div class="splash-dot"></div>
+      </div>
+
+      <div class="splash-body">
+        <div class="splash-eyebrow-line" data-i18n="splash_eyebrow">EDITION 01 · 2026</div>
+        <h1 class="splash-title">
+          <span data-i18n="splash_title_main">核兵器 GDP リスクマップ</span>
+          <span class="splash-title-en" data-i18n="splash_title_sub">Nuclear GDP Risk Map</span>
+        </h1>
+        <p class="splash-lead" data-i18n="splash_lead">「もし核弾頭が一発、主要都市に届いたら、そこに積み上がった経済と記憶はいくら消えるのか」——その額を地図上で測るプロトタイプ。</p>
+
+        <div class="splash-body-text" data-i18n="splash_about">都市は、数十年かけて積み上がった<b>経済資本と制度的記憶の密な塊</b>である。核弾頭が一発当たれば、その塊は一瞬で蒸発する。本プロトタイプが計算するのは、現に配備されている核兵器が抱えさせている —— 『もし起きたらこれだけの額が消える』という、帳簿に載っていない負債(GDP換算)。<span class="term" data-def-ja="NPT(Nuclear Non-Proliferation Treaty / 核兵器不拡散条約)。1968年署名・1970年発効。核保有国には段階的な軍縮を、非保有国には核兵器取得の禁止を求める国際条約。日本を含む191カ国が加盟。" data-def-en="NPT — Nuclear Non-Proliferation Treaty (signed 1968, in force 1970). Commits nuclear-weapon states to disarmament and non-nuclear states to foregoing weapons. 191 states parties.">NPT</span>議論の中では、この金額はほぼ測られてこなかった。</div>
+      </div>
+
+      <div class="splash-actions">
+        <button id="splash-enter" class="splash-enter">
+          <span data-i18n="splash_start">調査を開始</span>
+          <span class="arrow">→</span>
+        </button>
+        <div class="splash-lang">
+          <button class="lang-btn active" data-lang="ja">日本語</button>
+          <span class="lang-sep">/</span>
+          <button class="lang-btn" data-lang="en">English</button>
+        </div>
+        <span class="splash-hint" data-i18n="splash_hint">Enter キーでも進行</span>
+      </div>
+
+      <div class="splash-bottom">
+        <span>v0.1 · proto</span>
+        <span class="sb-dot">◆ ◆ ◆</span>
+        <span data-i18n="splash_footer">Outrider 向け議論用スキャフォールド</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ DASHBOARD ============ -->
+  <header>
+    <div class="title">
+      <div class="logomark" aria-hidden="true"></div>
+      <div class="title-block">
+        <div class="eyebrow">
+          <span class="eyebrow-mark">◆</span>
+          <span data-i18n="eyebrow">Outrider Foundation 向けリファレンス装置</span>
+        </div>
+        <h1 data-i18n="title">核兵器 GDP リスクマップ</h1>
+        <p class="subtitle" data-i18n="subtitle">主要都市に核弾頭が届いた場合に消える経済・人口・記憶を、地図上で概算する。</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="lang-toggle" role="group" aria-label="Language">
+        <button class="lang-btn active" data-lang="ja">JA</button>
+        <span class="lang-sep">/</span>
+        <button class="lang-btn" data-lang="en">EN</button>
+      </div>
+      <div class="meta">
+        <div class="meta-row"><span class="meta-k" data-i18n="meta_edition">EDITION</span><span class="meta-v">01</span></div>
+        <div class="meta-row"><span class="meta-k" data-i18n="meta_date">DATE</span><span class="meta-v" id="date-stamp">—</span></div>
+        <div class="meta-row"><span class="meta-k" data-i18n="meta_version">VERSION</span><span class="meta-v">0.1 / proto</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <aside id="sidebar">
+
+      <section class="panel stagger">
+        <h2 data-i18n="scenario">シナリオ</h2>
+        <label class="field">
+          <span data-i18n="yield_label">弾頭出力</span>
+          <select id="yield">
+            <option value="15"            data-ja="15 kt — 広島(リトルボーイ)"                data-en="15 kt — Hiroshima (Little Boy)">15 kt — 広島(リトルボーイ)</option>
+            <option value="21"            data-ja="21 kt — 長崎(ファットマン)"                data-en="21 kt — Nagasaki (Fat Man)">21 kt — 長崎(ファットマン)</option>
+            <option value="100"           data-ja="100 kt — 戦術核(低出力帯)"                 data-en="100 kt — low-end tactical">100 kt — 戦術核(低出力帯)</option>
+            <option value="300" selected  data-ja="300 kt — W87(米 ミニットマンIII)"          data-en="300 kt — W87 (US Minuteman III)">300 kt — W87(米 ミニットマンIII)</option>
+            <option value="800"           data-ja="800 kt — SS-18 MIRV 単弾頭換算"             data-en="800 kt — SS-18 MIRV (per warhead)">800 kt — SS-18 MIRV 単弾頭換算</option>
+            <option value="1500"          data-ja="1.5 Mt — R-36M(旧ソ 重ICBM)"              data-en="1.5 Mt — R-36M (Soviet heavy ICBM)">1.5 Mt — R-36M(旧ソ 重ICBM)</option>
+            <option value="25000"         data-ja="25 Mt — B41(米退役・実配備最大級)"         data-en="25 Mt — B41 (retired, near historical ceiling)">25 Mt — B41(米退役・実配備最大級)</option>
+          </select>
+        </label>
+        <label class="field">
+          <span data-i18n="burst_label">爆発方式</span>
+          <select id="burst">
+            <option value="air" selected  data-ja="適高度爆発(エアバースト)"                   data-en="Optimal airburst">適高度爆発(エアバースト)</option>
+            <option value="ground"        data-ja="地表爆発(グラウンドバースト)"              data-en="Ground burst">地表爆発(グラウンドバースト)</option>
+          </select>
+        </label>
+        <p class="hint" data-i18n="hint_click">地図上の任意の点をクリックすると起爆。都市バブルをクリックすると単独の露出プロファイルを表示。</p>
+        <button id="clear" class="ghost" hidden>
+          <span class="pdot"></span><span data-i18n="clear_btn">起爆をクリア</span>
+        </button>
+      </section>
+
+      <section class="panel accent" id="result" hidden>
+        <h2 data-i18n="result">露出する経済質量</h2>
+        <div id="result-body"></div>
+      </section>
+
+      <section class="panel stagger" id="city-info" hidden>
+        <h2 id="city-name"></h2>
+        <div id="city-body"></div>
+      </section>
+
+      <section class="panel stagger">
+        <h2 data-i18n="layers">レイヤー</h2>
+        <label class="toggle"><input type="checkbox" id="layer-gdp" checked><span data-i18n="layer_gdp">都市GDPバブル</span><span class="legend-dot" style="--sw: var(--vermillion)"></span></label>
+        <label class="toggle"><input type="checkbox" disabled>
+          <span class="term" data-def-ja="アーカイブ / 文化的記憶の損失: 国立公文書館・図書館・宗教文書・病院記録・企業本社文書庫など、物理的に一度失えば復元できない記録の集積。『都市の制度的記憶』を定量化するレイヤー。" data-def-en="Archival / cultural memory loss — the aggregate of irreplaceable physical records (national archives, libraries, religious manuscripts, hospital records, corporate HQ document stores). Quantifies a city's institutional memory.">
+            <span data-i18n="layer_memory">アーカイブ / 文化的記憶の損失</span>
+          </span>
+          <span class="badge">STUB</span>
+        </label>
+        <label class="toggle"><input type="checkbox" disabled>
+          <span class="term" data-def-ja="半導体ファブ(fabrication plant): 半導体チップを製造する工場。TSMC(台湾)、Samsung(韓国)、Intel(米)が世界の先端ロジックの大半を握る。地理的に極度に集中しており、1拠点の喪失がサプライチェーン全体を止める。" data-def-en="A semiconductor fabrication plant. A handful of sites (TSMC in Taiwan, Samsung in Korea, Intel in the US) produce most of the world's advanced logic chips. Extreme geographic concentration: loss of one site stalls the global supply chain.">
+            <span data-i18n="layer_fabs">半導体ファブ</span>
+          </span>
+          <span class="badge">STUB</span>
+        </label>
+        <label class="toggle"><input type="checkbox" disabled>
+          <span class="term" data-def-ja="フォールアウト・プルーム: 核爆発で舞い上がった放射性降下物が、風に乗って帯状に広がる現象。地表爆発で特に顕著で、風下100〜1000kmに汚染が及ぶ。Plume = 煙流・煙の尾。" data-def-en="Fallout plume — the wind-borne spread of radioactive debris after a detonation. Especially severe in ground bursts, reaching 100–1000 km downwind.">
+            <span data-i18n="layer_fallout">フォールアウト・プルーム</span>
+          </span>
+          <span class="badge">STUB</span>
+        </label>
+        <p class="hint small" data-i18n="layers_hint">追加の負債レイヤーはスキーマに雛形を確保。Outrider 側と出典を合意次第、差し込み可能。</p>
+      </section>
+
+      <section class="panel stagger">
+        <h2 data-i18n="about">概要</h2>
+        <p data-i18n="about_body">本プロトタイプは、都市を<b>経済と制度的記憶の密で非代替な貯蔵庫</b>として扱う。単一の起爆は、数十年にわたる複利的資本・記録・生活史を瞬時に蒸発させる —— 現行の核戦略下で潜在化し、<span class="term" data-def-ja="NPT: 核兵器不拡散条約。" data-def-en="NPT: Nuclear Non-Proliferation Treaty.">NPT</span>議論では価格付けされていない負債である。</p>
+        <p class="src" data-i18n="src">都市GDP: <span class="term" data-def-ja="Brookings Institution と JPMorgan Chase が共同で発行する、都市GDP・生産性の国際比較データセット。" data-def-en="International dataset of metro-level GDP and productivity, jointly published by Brookings Institution and JPMorgan Chase.">Brookings Global Metro Monitor</span> / Oxford Economics(参考値、2022–2023)。爆発半径: <span class="term" data-def-ja="1977年版『The Effects of Nuclear Weapons』。核兵器効果の標準参考書で、本ツールの爆発半径スケーリングもここに基づく。" data-def-en="Glasstone &amp; Dolan (1977), 'The Effects of Nuclear Weapons' — standard reference; the blast scaling in this tool follows its airburst tables.">Glasstone &amp; Dolan (1977)</span>.</p>
+      </section>
+
+    </aside>
+
+    <div id="map-wrap">
+      <div id="map"></div>
+
+      <figcaption id="fig">
+        <span class="fig-num">
+          <span class="fig-no">FIG. 01</span>
+          <span class="fig-sep">—</span>
+          <span id="fig-label" data-i18n="fig_label_idle">入力待ち</span>
+        </span>
+        <span id="fig-body" data-i18n="fig_body_idle">左パネルで弾頭出力を選び、地図上の任意の点をクリックすると起爆をシミュレート。3つの標準被害リングと、世界GDP上位35都市の実効メトロ円との重なりから、露出GDPを計算します。</span>
+      </figcaption>
+
+      <div id="legend" hidden>
+        <div class="legend-title" data-i18n="legend_title">被害リング</div>
+        <div class="legend-row"><span class="swatch severe"></span><span class="term" data-def-ja="過圧5 psi(≒34 kPa)。鉄筋非補強の建物を倒壊させ、重度負傷を広範囲に及ぼす衝撃圏。広島型15ktの中心から約2km。" data-def-en="5 psi overpressure (~34 kPa). Collapses non-reinforced buildings and causes severe injury. At Hiroshima (15 kt), the 5-psi radius was ~2 km." data-i18n="legend_severe">5 psi · 深刻な構造破壊</span></div>
+        <div class="legend-row"><span class="swatch thermal"></span><span class="term" data-def-ja="表皮・真皮を越え皮下組織に達する重度熱傷。核爆発では閃光から数秒以内に半径数十kmで発生しうる。" data-def-en="Full-thickness burns reaching subcutaneous tissue. In a nuclear detonation, occurs within seconds out to tens of km." data-i18n="legend_thermal">3度熱傷</span></div>
+        <div class="legend-row"><span class="swatch moderate"></span><span class="term" data-def-ja="過圧1 psi(≒6.9 kPa)。ガラス破損・軽度の構造被害。一般にこの範囲を『軽度被害圏』と呼ぶ。" data-def-en="1 psi overpressure (~6.9 kPa). Breaks windows and causes light structural damage — the conventional 'light damage zone'." data-i18n="legend_moderate">1 psi · 軽度被害</span></div>
+      </div>
+    </div>
+  </main>
+
+  <div id="flash" aria-hidden="true"></div>
+  <div id="tip" class="tip" aria-hidden="true"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="cities.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
