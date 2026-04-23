@@ -28,10 +28,24 @@ const I18N = {
     scenario:      "シナリオ",
     yield_label:   "弾頭出力",
     burst_label:   "爆発方式",
-    hint_click:    "地図上の任意の点をクリックすると起爆。都市バブルをクリックすると単独の露出プロファイルを表示。",
-    clear_btn:     "起爆をクリア",
+    hint_click:    "地図上の任意の点をクリックすると起爆。リセットまで何発でも積み上がる。都市バブルをクリックすると露出プロファイル表示。",
+    clear_btn:     "すべてリセット",
 
-    result:        "露出する経済質量",
+    result:        "累積被害",
+    cum_lead:      "起爆した都市の経済資本と人口が、ここに積み上がる。リセットを押すまで消えない。",
+    cum_loss_label:"累積経済損失",
+    cum_count:     "起爆回数",
+    cum_pop:       "累積影響人口",
+    cum_share:     "世界年GDP比",
+    reset_btn:     "すべてリセット",
+    dispatch_head: "配信タイムライン",
+    dispatch_empty:"まだ起爆はありません。左で弾頭出力を選び、地図をクリック。",
+    jpy_rate_note: "日本円換算は ¥150/$ の概算。",
+    hazard_tag:    "既爆",
+    halt_prefix:   "機能停止",
+    narr_unknown:  "任意地点",
+    narr_detonations:"発",
+    ripple_legend: "線 = 貿易依存と金融ハブ連鎖による被害の流れ。太さ/濃さ=被害額。",
     layers:        "レイヤー",
     layer_gdp:     "都市GDPバブル",
     layer_memory:  "アーカイブ / 文化的記憶の損失",
@@ -120,10 +134,24 @@ const I18N = {
     scenario:      "Scenario",
     yield_label:   "Warhead yield",
     burst_label:   "Burst type",
-    hint_click:    "Click anywhere on the map to detonate. Click a metro bubble to view its standalone exposure profile.",
-    clear_btn:     "Clear detonation",
+    hint_click:    "Click the map to detonate — strikes accumulate until you reset. Click a metro bubble for its exposure profile.",
+    clear_btn:     "Reset all",
 
-    result:        "Economic mass at risk",
+    result:        "Cumulative damage",
+    cum_lead:      "Every detonation leaves its economic mass here. It persists until you reset.",
+    cum_loss_label:"Cumulative economic loss",
+    cum_count:     "Detonations",
+    cum_pop:       "Affected population",
+    cum_share:     "Share of world annual GDP",
+    reset_btn:     "Reset all",
+    dispatch_head: "Dispatch timeline",
+    dispatch_empty:"No detonations yet. Select a yield on the left and click the map.",
+    jpy_rate_note: "JPY conversion at ¥150/$ (indicative).",
+    hazard_tag:    "STRUCK",
+    halt_prefix:   "HALT",
+    narr_unknown:  "an arbitrary point",
+    narr_detonations:"strikes",
+    ripple_legend: "Lines = damage flowing through trade dependency and the finance-hub channel. Thicker / more opaque = larger loss.",
     layers:        "Layers",
     layer_gdp:     "Metro GDP bubbles",
     layer_memory:  "Archival / cultural memory loss",
@@ -224,9 +252,21 @@ function applyLang() {
   });
 
   // re-render dynamic content if active
-  if (lastPt) renderResult();
+  if (typeof cumulative !== "undefined" && cumulative.count > 0) renderCumulative(allDetonations[allDetonations.length - 1]);
   if (lastCity) showCity(lastCity);
   if (typeof cityLayer !== "undefined" && cityLayer) cityLayer.eachLayer(l => l.setTooltipContent ? l.setTooltipContent(l._cityRef.name[LANG]) : null);
+  // re-render hazard divIcons in the new language
+  if (typeof allDetonations !== "undefined") {
+    allDetonations.forEach(d => {
+      if (!d.hazard) return;
+      const place = d.cityMatch ? d.cityMatch.name : { ja: t("narr_unknown"), en: t("narr_unknown") };
+      d.hazard.setIcon(L.divIcon({
+        className: "hazard-div",
+        html: hazardIconHTML(place.ja, place.en),
+        iconSize: [88, 68], iconAnchor: [44, 34],
+      }));
+    });
+  }
   const simResultEl = document.getElementById("sim-result");
   if (simResultEl && !simResultEl.hidden && typeof runSim === "function") runSim();
 }
@@ -332,13 +372,49 @@ function overlapFraction(d, r1, r2) {
 }
 
 // -------------------- FORMATTERS --------------------
-function fmtGDP(v) {
-  if (v >= 1000) return (v/1000).toFixed(2) + " " + t("unit_t");
-  return Math.round(v).toLocaleString() + " " + t("unit_b");
+const JPY_PER_USD = 150;
+
+function fmtYen(vUsdB) {
+  // vUsdB → yen: $1B USD = ¥150B = ¥1,500億 = ¥0.15兆
+  const chouyen = vUsdB * JPY_PER_USD / 1000; // 兆円
+  const okuyen  = vUsdB * JPY_PER_USD * 10;   // 億円
+  if (chouyen >= 100)   return "¥" + chouyen.toFixed(0) + "兆";
+  if (chouyen >= 10)    return "¥" + chouyen.toFixed(1) + "兆";
+  if (chouyen >= 1)     return "¥" + chouyen.toFixed(2) + "兆";
+  if (okuyen >= 100)    return "¥" + Math.round(okuyen).toLocaleString() + "億";
+  if (okuyen >= 1)      return "¥" + okuyen.toFixed(1) + "億";
+  return "¥" + (okuyen * 10000).toFixed(0) + "万";
 }
+function fmtUSD(vUsdB) {
+  if (vUsdB >= 1000) return "$" + (vUsdB/1000).toFixed(2) + " T";
+  if (vUsdB >= 10)   return "$" + vUsdB.toFixed(0) + " B";
+  if (vUsdB >= 1)    return "$" + vUsdB.toFixed(1) + " B";
+  return "$" + vUsdB.toFixed(2) + " B";
+}
+function fmtMoney(vUsdB) {
+  return LANG === "ja" ? fmtYen(vUsdB) : fmtUSD(vUsdB);
+}
+function fmtMoneyAlt(vUsdB) {
+  // the other currency for parenthetical display
+  return LANG === "ja" ? fmtUSD(vUsdB) : fmtYen(vUsdB);
+}
+// legacy alias used in a few places
+function fmtGDP(v) { return fmtMoney(v); }
+
 function fmtPop(v) { return v.toFixed(1) + " " + t("unit_m"); }
 function fmtKm(v)  { return v.toFixed(1) + " " + t("unit_km"); }
 function fmtPct(v) { return (v*100).toFixed(2) + "%"; }
+
+function fmtTime(d) {
+  const pad = n => String(n).padStart(2, "0");
+  if (LANG === "ja") {
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} JST`;
+  }
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+function fmtYieldLabel(kt) {
+  return kt >= 1000 ? (kt/1000).toFixed(1) + " Mt" : kt + " kt";
+}
 
 // -------------------- EASINGS + ANIMATE --------------------
 const eases = {
@@ -412,16 +488,222 @@ function renderCities() {
 }
 renderCities();
 
+// -------------------- NARRATIVE FLAVORS --------------------
+const CITY_FLAVOR = {
+  "Tokyo": {
+    ja_area: "皇居・丸の内",
+    ja_sectors: "東証と主要メガバンク本店の物理インフラ、中央省庁の決裁機能、国立公文書館の半世紀分の原本",
+    ja_ripple: "アジア時間の円為替と日経先物の一次取引が停止する見通し",
+    en_area: "Imperial District / Marunouchi",
+    en_sectors: "the physical infrastructure of the Tokyo Stock Exchange and major megabank HQs, the ministries' decision apparatus, and half a century of originals at the National Archives",
+    en_ripple: "JPY forex and Nikkei futures are expected to halt for the entire Asia session",
+  },
+  "New York": {
+    ja_area: "マンハッタン南端",
+    ja_sectors: "NYSE・NASDAQ 取引所、主要投資銀行の本社オフィス、国連本部、NY連銀の金準備庫",
+    ja_ripple: "世界のドル建て資産取引が一時停止し、翌日のロンドン時間は主要参照レートなしで開くことになる",
+    en_area: "Lower Manhattan",
+    en_sectors: "the NYSE and NASDAQ trading floors, major investment-bank offices, UN Headquarters, and the NY Fed gold vault",
+    en_ripple: "Dollar-denominated markets halt and London opens the next day with no reference rate",
+  },
+  "London": {
+    ja_area: "シティ・ウェストミンスター",
+    ja_sectors: "ロンドン証券取引所、ロイズ保険市場、イングランド銀行、ウェストミンスター宮殿と大英博物館",
+    ja_ripple: "欧州時間の金融取引が午前を通じて停止し、再保険市場が連鎖的に機能不全に陥る",
+    en_area: "The City / Westminster",
+    en_sectors: "the London Stock Exchange, Lloyd's insurance market, the Bank of England, the Palace of Westminster, and the British Museum",
+    en_ripple: "European-hours trading halts through the morning and the reinsurance market collapses in cascade",
+  },
+  "Shanghai": {
+    ja_area: "浦東新区・外灘",
+    ja_sectors: "上海証券取引所、国有四大銀行の国際本部、世界最大級の上海港コンテナ管制",
+    ja_ripple: "人民元のオフショア取引が停止し、中国の輸出港湾機能が連動して崩壊する",
+    en_area: "Pudong / The Bund",
+    en_sectors: "the Shanghai Stock Exchange, the international HQs of China's big-four state banks, and the control center of the world's largest container port",
+    en_ripple: "Offshore RMB trading halts and China's export-port throughput collapses in tandem",
+  },
+  "Seoul": {
+    ja_area: "中区・江南",
+    ja_sectors: "サムスン・現代・LG の本社機能、韓国取引所、龍山の大統領執務室",
+    ja_ripple: "半導体・自動車サプライチェーンが数か月単位で寸断され、ウォン通貨制度が事実上停止する",
+    en_area: "Jung-gu / Gangnam",
+    en_sectors: "Samsung, Hyundai, and LG headquarters, the Korea Exchange, and the presidential office in Yongsan",
+    en_ripple: "Semiconductor and auto supply chains sever for months and the KRW regime effectively halts",
+  },
+  "Paris": {
+    ja_area: "セーヌ右岸・ラ・デファンス",
+    ja_sectors: "ルーヴル美術館、フランス国立図書館、欧州宇宙機関本部、主要保険・エネルギー企業の本社",
+    ja_ripple: "ユーロ圏南部の金融・エネルギー決裁が遅延し、人類史最大級の美術コレクションが消失する",
+    en_area: "Right Bank / La Défense",
+    en_sectors: "the Louvre, the French National Library, ESA headquarters, and the HQs of major insurance and energy firms",
+    en_ripple: "Southern-eurozone settlements are delayed and some of humanity's largest art holdings are destroyed",
+  },
+  "Hong Kong": {
+    ja_area: "中環・金鐘",
+    ja_sectors: "香港証券取引所、HSBC本店、主要投資銀行のアジア統括機能",
+    ja_ripple: "アジア時間の株式・為替中継機能が失われ、上海・東京セッションが断絶する",
+    en_area: "Central / Admiralty",
+    en_sectors: "the Hong Kong Stock Exchange, HSBC headquarters, and the Asian HQs of major investment banks",
+    en_ripple: "The Asian-session equity and FX hub disappears, disconnecting Shanghai from Tokyo",
+  },
+  "Singapore": {
+    ja_area: "マリーナベイ・中央ビジネス区",
+    ja_sectors: "シンガポール取引所、世界最大級のコンテナ港湾、アジアの大宗商品決済ハブ",
+    ja_ripple: "マラッカ海峡の航路管制が崩壊し、東アジア向けの原油・LNG供給が数週間止まる",
+    en_area: "Marina Bay / CBD",
+    en_sectors: "the Singapore Exchange, one of the world's largest container ports, and Asia's commodity-clearing hub",
+    en_ripple: "Malacca Strait traffic control collapses, stalling crude and LNG flows to East Asia for weeks",
+  },
+  "Beijing": {
+    ja_area: "天安門・長安街",
+    ja_sectors: "中央政府の意思決定機能、中国人民銀行、主要国有企業本社",
+    ja_ripple: "中国の対外通貨政策と主要国有企業の指揮命令系統が一時的に失われる",
+    en_area: "Tiananmen / Chang'an Avenue",
+    en_sectors: "the central government's decision apparatus, the People's Bank of China, and major state-owned enterprise HQs",
+    en_ripple: "China's external monetary policy and state-enterprise command chains go temporarily dark",
+  },
+  "Los Angeles": {
+    ja_area: "ダウンタウン・ハリウッド",
+    ja_sectors: "ハリウッドの撮影インフラ、主要メディア企業の物理倉庫、ロサンゼルス港の管制",
+    ja_ripple: "北米西岸の映像・コンテンツ産業が停滞し、輸入物流のボトルネックが長期化する",
+    en_area: "Downtown / Hollywood",
+    en_sectors: "Hollywood production infrastructure, media-company physical archives, and the Port of Los Angeles control",
+    en_ripple: "The West Coast media industry stalls and import-logistics bottlenecks persist",
+  },
+  "San Francisco Bay": {
+    ja_area: "サンフランシスコ半島・シリコンバレー",
+    ja_sectors: "主要テック企業の本社機能、VCの意思決定、世界のクラウド・AI研究の中枢",
+    ja_ripple: "世界のAI研究・クラウド開発が数年単位で後退し、主要オンライン決済が停止する",
+    en_area: "SF Peninsula / Silicon Valley",
+    en_sectors: "the HQs of major tech firms, VC decision-making, and the global center of cloud and AI research",
+    en_ripple: "Global AI research and cloud development regress by years and major online payment rails halt",
+  },
+  "Chicago": {
+    ja_area: "ループ地区",
+    ja_sectors: "シカゴ・マーカンタイル取引所、主要穀物先物、連邦準備銀行シカゴ支店",
+    ja_ripple: "穀物・金利先物取引が停止し、北米中西部の農業決済が数週間機能不全に陥る",
+    en_area: "The Loop",
+    en_sectors: "the Chicago Mercantile Exchange, major grain futures, and the Chicago Fed branch",
+    en_ripple: "Grain and rate futures halt; Midwest agricultural settlement stalls for weeks",
+  },
+  "Washington DC": {
+    ja_area: "ワシントン・モール",
+    ja_sectors: "連邦議会議事堂、ホワイトハウス、各省庁、国立公文書館と議会図書館",
+    ja_ripple: "米連邦政府の意思決定機能が一時停止し、国際機関・同盟国への指揮命令が空白化する",
+    en_area: "The National Mall",
+    en_sectors: "the US Capitol, the White House, cabinet departments, and the National Archives and Library of Congress",
+    en_ripple: "Federal decision-making halts; direction to allies and international bodies goes dark",
+  },
+  "Moscow": {
+    ja_area: "クレムリン・赤の広場",
+    ja_sectors: "大統領府、主要国有エネルギー企業本社、ロシア中央銀行",
+    ja_ripple: "ロシアの指揮命令系統と欧州向けエネルギー輸送の管理機能が空白化する",
+    en_area: "Kremlin / Red Square",
+    en_sectors: "the presidential administration, major state energy-company HQs, and the Central Bank of Russia",
+    en_ripple: "Russian command chains and European-bound energy-transport control go dark",
+  },
+  "Taipei": {
+    ja_area: "台北・新竹",
+    ja_sectors: "TSMC本社・先端ノード試作ライン、世界の先端ロジック供給の中枢",
+    ja_ripple: "世界の半導体先端プロセスが数年単位で停止し、主要スマートフォン・サーバーの供給が途絶する",
+    en_area: "Taipei / Hsinchu",
+    en_sectors: "TSMC headquarters and advanced-node pilot lines — the center of global advanced-logic supply",
+    en_ripple: "Advanced semiconductor processes stall for years worldwide, cutting smartphone and server supply",
+  },
+  "Mumbai": {
+    ja_area: "南ムンバイ・ナリマンポイント",
+    ja_sectors: "ボンベイ証券取引所、インド準備銀行、タタ・リライアンスなど主要企業本社",
+    ja_ripple: "南アジアの金融決済が停止し、インド洋海運経由の物流が混乱する",
+    en_area: "South Mumbai / Nariman Point",
+    en_sectors: "the Bombay Stock Exchange, the Reserve Bank of India, and the HQs of Tata, Reliance and other major firms",
+    en_ripple: "South Asian clearing halts and Indian-Ocean shipping is disrupted",
+  },
+  "Dubai": {
+    ja_area: "ダウンタウン・DIFC",
+    ja_sectors: "ドバイ国際金融センター、エミレーツ航空のハブ、湾岸の国際決済機能",
+    ja_ripple: "中東の航空ハブ機能が消失し、湾岸の国際金融決済が一時停止する",
+    en_area: "Downtown / DIFC",
+    en_sectors: "Dubai International Financial Centre, Emirates Airlines' hub, and Gulf settlement functions",
+    en_ripple: "The Middle-East aviation hub disappears and Gulf international settlements halt",
+  },
+  "Osaka": {
+    ja_area: "梅田・中之島",
+    ja_sectors: "関西の金融・製造業本社、大阪証券取引所派生機能、重化学工業クラスター",
+    ja_ripple: "西日本の産業決済と京阪神圏の物流ネットワークが停止する",
+    en_area: "Umeda / Nakanoshima",
+    en_sectors: "Kansai's financial and manufacturing HQs, the Osaka Exchange's derivative functions, and the heavy-chemical industrial cluster",
+    en_ripple: "Western-Japan industrial settlement and the Keihanshin logistics network halt",
+  },
+  "Delhi": {
+    ja_area: "ニューデリー中心部",
+    ja_sectors: "インド中央政府と議会、主要省庁、国立博物館と図書館",
+    ja_ripple: "インドの中央政府機能が一時停止し、南アジア全体の外交・経済指揮が空白化する",
+    en_area: "Central New Delhi",
+    en_sectors: "India's central government and parliament, the ministries, and the national museums and libraries",
+    en_ripple: "India's central-government functions halt; South Asian diplomatic and economic command goes dark",
+  },
+};
+
+function pickFlavor(city) {
+  return city && CITY_FLAVOR[city.name.en] ? CITY_FLAVOR[city.name.en] : null;
+}
+
+function findNearestCity(pt, maxKm = 120) {
+  let best = null, bestD = Infinity;
+  CITIES.forEach(c => {
+    const d = haversine(pt, { lat: c.lat, lng: c.lng });
+    if (d < bestD) { bestD = d; best = c; }
+  });
+  return bestD <= maxKm ? best : null;
+}
+
 // -------------------- DETONATION --------------------
-let ringsLayer = L.layerGroup().addTo(map);
-let shockLayer = L.layerGroup().addTo(map);
-let epicenter = null;
+let shockLayer = L.layerGroup().addTo(map); // transient fx (fireball, shockwaves, dust) — shared
+let haltLayer  = L.layerGroup().addTo(map); // halt divIcons for simulator sources
 let lastPt = null, lastKt = null, lastBurst = null;
 let lastCity = null;
 
+const allDetonations = []; // { id, time, pt, kt, burst, hits, totalGDP, totalPop, layer, cityMatch, story }
+const cumulative = { gdpB: 0, pop: 0, count: 0 };
+// animation smoothing — displayed values so counter animates from last state (not from 0)
+const display = { gdpB: 0, pop: 0, share: 0 };
+
+// -------------------- HAZARD / HALT ICONS --------------------
+function hazardIconHTML(labelJa, labelEn) {
+  return `
+    <div class="hazard-mark">
+      <div class="hazard-ring"></div>
+      <svg class="hazard-sym" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/>
+        <line x1="2"  y1="16" x2="10" y2="16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="22" y1="16" x2="30" y2="16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="16" y1="2"  x2="16" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="16" y1="22" x2="16" y2="30" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="16" cy="16" r="2.6" fill="currentColor"/>
+      </svg>
+      <div class="hazard-tag">${LANG === "ja" ? labelJa : labelEn}</div>
+    </div>
+  `;
+}
+function haltIconHTML(cityNameJa, cityNameEn, haltPct) {
+  const cityName = LANG === "ja" ? cityNameJa : cityNameEn;
+  const label = (LANG === "ja" ? "機能停止 " : "HALT ") + haltPct + "%";
+  return `
+    <div class="halt-mark">
+      <div class="halt-ring"></div>
+      <svg class="halt-sym" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2"/>
+        <rect x="10.5" y="9" width="3" height="14" fill="currentColor" rx="0.5"/>
+        <rect x="18.5" y="9" width="3" height="14" fill="currentColor" rx="0.5"/>
+      </svg>
+      <div class="halt-tag">${label}</div>
+      <div class="halt-city">${cityName}</div>
+    </div>
+  `;
+}
+
 const $yield = document.getElementById("yield");
 const $burst = document.getElementById("burst");
-const $clear = document.getElementById("clear");
 const $result = document.getElementById("result");
 const $resultBody = document.getElementById("result-body");
 const $cityInfo = document.getElementById("city-info");
@@ -433,22 +715,26 @@ const $figLabel = document.getElementById("fig-label");
 const $figBody  = document.getElementById("fig-body");
 
 function clearAll() {
-  ringsLayer.clearLayers();
+  // wipe every persisted detonation (rings + hazard mark) by removing its layer group
+  allDetonations.forEach(d => { if (d.layer) map.removeLayer(d.layer); });
+  allDetonations.length = 0;
+  cumulative.gdpB = 0; cumulative.pop = 0; cumulative.count = 0;
+  display.gdpB = 0; display.pop = 0; display.share = 0;
   shockLayer.clearLayers();
-  if (epicenter) { map.removeLayer(epicenter); epicenter = null; }
-  lastPt = null;
+  haltLayer.clearLayers();
+  rippleLayer && rippleLayer.clearLayers();
+
+  lastPt = null; lastCity = null;
   $result.hidden = true;
   $resultBody.innerHTML = "";
   $cityInfo.hidden = true;
   $legend.hidden = true;
-  $clear.hidden = true;
-  lastCity = null;
   $figLabel.setAttribute("data-i18n", "fig_label_idle");
   $figBody.setAttribute("data-i18n", "fig_body_idle");
   $figLabel.textContent = t("fig_label_idle");
   $figBody.textContent = t("fig_body_idle");
 }
-$clear.addEventListener("click", clearAll);
+document.getElementById("reset-inline")?.addEventListener("click", clearAll);
 
 function triggerFlash(containerPoint) {
   const r = document.getElementById("map").getBoundingClientRect();
@@ -470,7 +756,6 @@ function triggerShake() {
 }
 
 function detonate(pt, opts = {}) {
-  clearAll();
   lastPt = pt;
   lastKt = parseFloat($yield.value);
   lastBurst = $burst.value;
@@ -482,7 +767,16 @@ function detonate(pt, opts = {}) {
   const r = blastRadii(lastKt, lastBurst);
   const mToKm = r.moderate * 1000;
 
-  // 1. FIREBALL CORE — bright pinhole at center
+  // per-detonation layer — everything persistent goes here, removed on reset
+  const detLayer = L.layerGroup().addTo(map);
+
+  // compute exposure for this strike
+  const { hits } = computeHitsFor(pt, lastKt, lastBurst);
+  const totalGDP = hits.reduce((s, h) => s + h.gdpExp, 0);
+  const totalPop = hits.reduce((s, h) => s + h.popExp, 0);
+  const cityMatch = findNearestCity(pt, 150);
+
+  // 1. FIREBALL CORE — transient pinhole
   const fireballCore = L.circleMarker(pt, {
     radius: 0, color: "#fffbea", weight: 0, fillColor: "#fffbea",
     fillOpacity: 1, interactive: false
@@ -494,7 +788,7 @@ function detonate(pt, opts = {}) {
     done: () => shockLayer.removeLayer(fireballCore)
   });
 
-  // 2. THERMAL NOVA — amber halo
+  // 2. THERMAL NOVA — transient amber halo
   const nova = L.circleMarker(pt, {
     radius: 0, color: "#c47418", weight: 0, fillColor: "#c47418",
     fillOpacity: 0.55, interactive: false
@@ -505,12 +799,13 @@ function detonate(pt, opts = {}) {
     done: () => shockLayer.removeLayer(nova)
   });
 
-  // 3. EPICENTER + halo pulse
-  epicenter = L.circleMarker(pt, {
+  // 3. EPICENTER DOT — persistent, lives on detLayer
+  const epi = L.circleMarker(pt, {
     radius: 0, color: "#17181a", weight: 1.5,
-    fillColor: "#17181a", fillOpacity: 1
-  }).addTo(map);
-  animate({ duration: 520, delay: 220, ease: "outBack", update: tt => epicenter.setRadius(4.5 * tt) });
+    fillColor: "#17181a", fillOpacity: 1, interactive: false
+  }).addTo(detLayer);
+  animate({ duration: 520, delay: 220, ease: "outBack", update: tt => epi.setRadius(4.5 * tt) });
+  // one-shot halo pulse (transient)
   const epiHalo = L.circleMarker(pt, {
     radius: 0, color: "#17181a", weight: 1, fill: false, opacity: 0.5, interactive: false
   }).addTo(shockLayer);
@@ -520,7 +815,7 @@ function detonate(pt, opts = {}) {
     done: () => shockLayer.removeLayer(epiHalo)
   });
 
-  // 4. DAMAGE RINGS — stagger + intensify
+  // 4. DAMAGE RINGS — persistent, go on detLayer
   const ringSpecs = [
     { km: r.moderate, color: "#ae8b13", fill: "#ae8b13", fillOpacity: 0.08, weight: 1.2, delay: 300, dur: 860 },
     { km: r.thermal,  color: "#c47418", fill: "#c47418", fillOpacity: 0.10, weight: 1.2, delay: 440, dur: 860 },
@@ -529,8 +824,8 @@ function detonate(pt, opts = {}) {
   ringSpecs.forEach(spec => {
     const ring = L.circle(pt, {
       radius: 10, color: spec.color, weight: spec.weight,
-      fillColor: spec.fill, fillOpacity: 0, opacity: 0
-    }).addTo(ringsLayer);
+      fillColor: spec.fill, fillOpacity: 0, opacity: 0, interactive: false
+    }).addTo(detLayer);
     animate({
       duration: spec.dur, delay: spec.delay, ease: "outQuart",
       update: tt => {
@@ -540,7 +835,7 @@ function detonate(pt, opts = {}) {
     });
   });
 
-  // 5. SHOCKWAVES — double pulse
+  // 5. SHOCKWAVES — transient double pulse
   const mkShock = (delay, dur, maxScale, opacity, color) => {
     const s = L.circle(pt, { radius: 0, color, weight: 1.2, fill: false, opacity, interactive: false }).addTo(shockLayer);
     animate({
@@ -555,7 +850,7 @@ function detonate(pt, opts = {}) {
   mkShock(160, 1600, 1.55, 0.45, "#17181a");
   mkShock(620, 1900, 1.95, 0.22, "#6a6f77");
 
-  // 6. DUST EJECTIONS — radial scatter
+  // 6. DUST EJECTIONS — transient radial scatter
   const dustCount = 12;
   const latRad = pt.lat * Math.PI / 180;
   const latScale = 111000;
@@ -581,10 +876,37 @@ function detonate(pt, opts = {}) {
     });
   }
 
-  $legend.hidden = false;
-  $clear.hidden = false;
+  // 7. HAZARD MARK — persistent divIcon dropped after the animation settles
+  const det = {
+    id: allDetonations.length + 1,
+    time: new Date(),
+    pt, kt: lastKt, burst: lastBurst,
+    hits, totalGDP, totalPop,
+    layer: detLayer, cityMatch,
+  };
+  setTimeout(() => {
+    const placeJa = cityMatch ? cityMatch.name.ja : t("narr_unknown");
+    const placeEn = cityMatch ? cityMatch.name.en : t("narr_unknown");
+    const hazardMark = L.marker([pt.lat, pt.lng], {
+      icon: L.divIcon({
+        className: "hazard-div",
+        html: hazardIconHTML(placeJa, placeEn),
+        iconSize: [88, 68],
+        iconAnchor: [44, 34],
+      }),
+      interactive: false, keyboard: false, zIndexOffset: 800,
+    }).addTo(detLayer);
+    det.hazard = hazardMark;
+  }, 1900);
 
-  setTimeout(() => renderResult(), 640);
+  // record + accumulate + render
+  allDetonations.push(det);
+  cumulative.count += 1;
+  cumulative.gdpB  += totalGDP;
+  cumulative.pop   += totalPop;
+
+  $legend.hidden = false;
+  renderCumulative(det);
 }
 
 map.on("click", e => {
@@ -592,11 +914,11 @@ map.on("click", e => {
   detonate(e.latlng);
 });
 
-// -------------------- RESULT PANEL --------------------
-function computeHits() {
-  const r = blastRadii(lastKt, lastBurst);
+// -------------------- RESULT / HITS --------------------
+function computeHitsFor(pt, kt, burst) {
+  const r = blastRadii(kt, burst);
   const hits = CITIES.map(c => {
-    const d = haversine(lastPt, { lat: c.lat, lng: c.lng });
+    const d = haversine(pt, { lat: c.lat, lng: c.lng });
     const fs = overlapFraction(d, r.severe,   c.r_km);
     const ft = overlapFraction(d, r.thermal,  c.r_km);
     const fm = overlapFraction(d, r.moderate, c.r_km);
@@ -606,62 +928,161 @@ function computeHits() {
   hits.sort((a, b) => b.gdpExp - a.gdpExp);
   return { hits, r };
 }
+function computeHits() { return computeHitsFor(lastPt, lastKt, lastBurst); }
 
-function renderResult() {
-  if (!lastPt) return;
-  const { hits, r } = computeHits();
-  const totalGDP = hits.reduce((s, h) => s + h.gdpExp, 0);
-  const totalPop = hits.reduce((s, h) => s + h.popExp, 0);
-  const share = totalGDP / WORLD_GDP_B;
-  const modeLabel = lastBurst === "ground" ? t("r_groundburst") : t("r_airburst");
-  const ktLabel = lastKt >= 1000 ? (lastKt/1000).toFixed(1) + " Mt" : lastKt + " kt";
+// -------------------- NARRATIVE --------------------
+function generateDispatch(det) {
+  const { cityMatch: c, kt, burst, pt, totalGDP, totalPop } = det;
+  const flavor = pickFlavor(c);
+  const place = c ? c.name[LANG] : t("narr_unknown");
+  const area  = flavor ? flavor[LANG + "_area"] : (LANG === "ja" ? "中心部" : "its central district");
+  const sector = flavor ? flavor[LANG + "_sectors"]
+                        : (LANG === "ja"
+                            ? "企業本社・公共インフラ・教育機関・文化施設の高密度集積"
+                            : "a dense cluster of corporate HQs, public infrastructure, schools, and cultural institutions");
+  const ripple = flavor ? flavor[LANG + "_ripple"] : null;
+  const ktLabel = fmtYieldLabel(kt);
+  const modeLabel = burst === "ground" ? t("r_groundburst") : t("r_airburst");
 
-  const top = hits.slice(0, 6);
-  const maxExp = top[0] ? top[0].gdpExp : 1;
+  if (LANG === "ja") {
+    const lead = `${place}の${area}に ${ktLabel} 級弾頭が${modeLabel}で着弾。`;
+    const lost = `${sector}が失われた。`;
+    const imp  = `この一撃で約 ${fmtYen(totalGDP)}（${fmtUSD(totalGDP)} 相当）の経済資本と、${fmtPop(totalPop)}の影響人口が計上される。`;
+    const rip  = ripple ? `${ripple}。` : "";
+    const cum  = cumulative.count > 1
+      ? `ここまでの累積は ${cumulative.count} 発 / ${fmtYen(cumulative.gdpB)}。`
+      : "";
+    return { lead, lost, imp, rip, cum };
+  } else {
+    const lead = `A ${ktLabel} warhead struck ${place} (${area}) as a${modeLabel[0] === 'A' ? "n" : ""} ${modeLabel.toLowerCase()}.`;
+    const lost = `${sector[0].toUpperCase()}${sector.slice(1)} was erased.`;
+    const imp  = `This single strike books approximately ${fmtUSD(totalGDP)} (${fmtYen(totalGDP)}) of economic capital and ${fmtPop(totalPop)} in affected population.`;
+    const rip  = ripple ? `${ripple[0].toUpperCase()}${ripple.slice(1)}.` : "";
+    const cum  = cumulative.count > 1
+      ? `Running total: ${cumulative.count} strikes / ${fmtUSD(cumulative.gdpB)}.`
+      : "";
+    return { lead, lost, imp, rip, cum };
+  }
+}
 
-  const hitsHtml = top.length ? `
+// -------------------- CUMULATIVE PANEL --------------------
+function renderCumulative(latestDet) {
+  const share = cumulative.gdpB / WORLD_GDP_B;
+
+  const lead = `<p class="cum-lead">${t("cum_lead")}</p>`;
+  const headline = `
+    <div class="damage-headline">
+      <div class="dh-label">${t("cum_loss_label")}</div>
+      <div class="dh-money" data-cm="big">—</div>
+      <div class="dh-money-sub" data-cm="sub">—</div>
+      <div class="dh-rate">${t("jpy_rate_note")}</div>
+    </div>
+    <div class="damage-meta">
+      <div class="dm-cell">
+        <div class="dm-k">${t("cum_count")}</div>
+        <div class="dm-v" data-cm="count">0</div>
+      </div>
+      <div class="dm-cell">
+        <div class="dm-k">${t("cum_pop")}</div>
+        <div class="dm-v" data-cm="pop">0</div>
+      </div>
+      <div class="dm-cell">
+        <div class="dm-k">${t("cum_share")}</div>
+        <div class="dm-v" data-cm="share">0%</div>
+      </div>
+    </div>
     <hr class="rule">
-    <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;font-weight:600;">${t("r_hits")}</div>
-    <ul class="hits">
-      ${top.map(h => `
-        <li>
-          <span class="city">${h.c.name[LANG]}</span>
-          <span class="bar" style="--p:${(h.gdpExp/maxExp).toFixed(3)}"></span>
-          <span class="pct">${fmtPct(h.f)}</span>
-        </li>`).join("")}
-    </ul>
-  ` : `<p class="hint" style="margin-top:10px;">${t("r_none")}</p>`;
-
-  $resultBody.innerHTML = `
-    <dl>
-      <dt>${t("r_target")}</dt><dd><span class="mono-target">${lastPt.lat.toFixed(2)}, ${lastPt.lng.toFixed(2)}</span></dd>
-      <dt>${t("r_yield")}</dt><dd>${ktLabel}</dd>
-      <dt>${t("r_mode")}</dt><dd>${modeLabel}</dd>
-      <dt>${t("r_radii")}</dt><dd>${fmtKm(r.severe)} / ${fmtKm(r.thermal)} / ${fmtKm(r.moderate)}</dd>
-    </dl>
-    <hr class="rule">
-    <dl>
-      <dt>${t("r_total_gdp")}</dt><dd><strong data-counter="gdp">0</strong></dd>
-      <dt>${t("r_total_pop")}</dt><dd><strong data-counter="pop">0</strong></dd>
-      <dt>${t("r_share")}</dt><dd><strong data-counter="share">0</strong></dd>
-    </dl>
-    ${hitsHtml}
+    <div class="dispatch-head">
+      <span class="dh-ch">●</span>
+      <span>${t("dispatch_head")}</span>
+    </div>
+    <ol class="dispatch-list" id="dispatch-list"></ol>
   `;
+
+  // rebuild body (preserving dispatch-list DOM nodes isn't necessary — we re-render from allDetonations)
+  $resultBody.innerHTML = lead + headline;
   $result.hidden = false;
 
-  // animate the big numbers
-  const gdpEl = $resultBody.querySelector('[data-counter="gdp"]');
-  const popEl = $resultBody.querySelector('[data-counter="pop"]');
-  const shareEl = $resultBody.querySelector('[data-counter="share"]');
-  animate({ duration: 900, ease: "outQuart", update: tt => { gdpEl.textContent = fmtGDP(totalGDP * tt); } });
-  animate({ duration: 900, ease: "outQuart", update: tt => { popEl.textContent = fmtPop(totalPop * tt); } });
-  animate({ duration: 900, ease: "outQuart", update: tt => { shareEl.textContent = fmtPct(share * tt); } });
+  // render timeline (most-recent first)
+  const list = document.getElementById("dispatch-list");
+  if (allDetonations.length === 0) {
+    list.innerHTML = `<li class="dispatch-empty">${t("dispatch_empty")}</li>`;
+  } else {
+    const items = [...allDetonations].reverse().map((d, idx) => {
+      const story = generateDispatch(d);
+      const placeName = d.cityMatch ? d.cityMatch.name[LANG] : t("narr_unknown");
+      const ktLabel = fmtYieldLabel(d.kt);
+      const modeLabel = d.burst === "ground" ? t("r_groundburst") : t("r_airburst");
+      const isLatest = idx === 0;
+      return `
+        <li class="dispatch-item${isLatest ? " is-latest" : ""}">
+          <div class="di-top">
+            <span class="di-num">#${String(d.id).padStart(2, "0")}</span>
+            <span class="di-time">${fmtTime(d.time)}</span>
+          </div>
+          <div class="di-location">
+            <span class="di-place">${placeName}</span>
+            <span class="di-coord">(${d.pt.lat.toFixed(2)}, ${d.pt.lng.toFixed(2)})</span>
+          </div>
+          <div class="di-figures">
+            <span class="dif-k">${t("r_yield")}</span><span class="dif-v">${ktLabel} / ${modeLabel}</span>
+            <span class="dif-k">${t("r_total_gdp")}</span><span class="dif-v dif-money">${fmtMoney(d.totalGDP)}</span>
+            <span class="dif-k">${t("r_total_pop")}</span><span class="dif-v">${fmtPop(d.totalPop)}</span>
+          </div>
+          <p class="di-story">${story.lead} ${story.lost} ${story.imp} ${story.rip} ${story.cum}</p>
+        </li>
+      `;
+    }).join("");
+    list.innerHTML = items;
+  }
 
-  // figcaption update
-  const mode = lastBurst === "ground" ? t("r_groundburst") : t("r_airburst");
-  $figLabel.textContent = t("fig_label_hot");
-  $figBody.innerHTML = t("fig_body_hot")(ktLabel, mode);
+  // animate big numbers from previous displayed state → current cumulative
+  const bigEl   = $resultBody.querySelector('[data-cm="big"]');
+  const subEl   = $resultBody.querySelector('[data-cm="sub"]');
+  const countEl = $resultBody.querySelector('[data-cm="count"]');
+  const popEl   = $resultBody.querySelector('[data-cm="pop"]');
+  const shareEl = $resultBody.querySelector('[data-cm="share"]');
+
+  const fromGdp = display.gdpB, toGdp = cumulative.gdpB;
+  const fromPop = display.pop,  toPop = cumulative.pop;
+  const fromShr = display.share, toShr = share;
+  const fromCnt = Math.max(0, cumulative.count - 1), toCnt = cumulative.count;
+
+  animate({
+    duration: 1200, ease: "outQuart",
+    update: tt => {
+      const v = fromGdp + (toGdp - fromGdp) * tt;
+      bigEl.textContent = fmtMoney(v);
+      subEl.textContent = "≈ " + fmtMoneyAlt(v);
+    },
+    done: () => { display.gdpB = toGdp; }
+  });
+  animate({
+    duration: 1200, ease: "outQuart",
+    update: tt => { popEl.textContent = fmtPop(fromPop + (toPop - fromPop) * tt); },
+    done: () => { display.pop = toPop; }
+  });
+  animate({
+    duration: 1200, ease: "outQuart",
+    update: tt => { shareEl.textContent = fmtPct(fromShr + (toShr - fromShr) * tt); },
+    done: () => { display.share = toShr; }
+  });
+  animate({
+    duration: 900, ease: "outQuart",
+    update: tt => { countEl.textContent = Math.round(fromCnt + (toCnt - fromCnt) * tt) + " " + t("narr_detonations"); }
+  });
+
+  // figcaption
+  if (latestDet) {
+    const ktLabel = fmtYieldLabel(latestDet.kt);
+    const modeLabel = latestDet.burst === "ground" ? t("r_groundburst") : t("r_airburst");
+    $figLabel.textContent = t("fig_label_hot");
+    $figBody.innerHTML = t("fig_body_hot")(ktLabel, modeLabel);
+  }
 }
+
+// kept for applyLang re-render compatibility
+function renderResult() { renderCumulative(allDetonations[allDetonations.length - 1]); }
 
 // -------------------- CITY PANEL --------------------
 function showCity(c) {
@@ -703,9 +1124,10 @@ function showCity(c) {
 }
 
 // -------------------- SIDE EFFECTS --------------------
+// Changing yield / burst only updates the standalone city preview.
+// (Past detonations persist with their own yield — clicking a new point uses the new yield.)
 [$yield, $burst].forEach(el => el.addEventListener("change", () => {
-  if (lastPt) detonate(lastPt);
-  else if (lastCity) showCity(lastCity);
+  if (lastCity) showCity(lastCity);
 }));
 
 document.getElementById("layer-gdp").addEventListener("change", e => {
@@ -777,7 +1199,7 @@ function buildArcPoints(a, b, N = 28) {
   return pts;
 }
 
-function drawRipple(src, tops) {
+function drawRipple(src, tops, haltPct) {
   rippleLayer.clearLayers();
 
   // source pulse
@@ -792,6 +1214,17 @@ function drawRipple(src, tops) {
     radius: 7, color: "#a8231f", weight: 2, fillColor: "#a8231f", fillOpacity: 0.85, interactive: false
   }).addTo(rippleLayer);
 
+  // source halt divIcon (persistent, moved to haltLayer so sequential runs stack cleanly)
+  haltLayer.clearLayers();
+  const haltMark = L.marker([src.lat, src.lng], {
+    icon: L.divIcon({
+      className: "halt-div",
+      html: haltIconHTML(src.name.ja, src.name.en, Math.round(haltPct)),
+      iconSize: [96, 72], iconAnchor: [48, 36],
+    }),
+    interactive: false, keyboard: false, zIndexOffset: 900,
+  }).addTo(haltLayer);
+
   const maxLoss = tops[0] ? tops[0].loss : 1;
   tops.forEach((h, i) => {
     const ratio = h.loss / maxLoss;
@@ -801,20 +1234,36 @@ function drawRipple(src, tops) {
       weight: 0.6 + ratio * 3.2,
       opacity: 0,
       smoothFactor: 1,
-      interactive: false
-    }).addTo(rippleLayer);
+    });
+    line.addTo(rippleLayer);
+    line.bindTooltip(
+      `<b>${src.name[LANG]} → ${h.c.name[LANG]}</b><br>${LANG === "ja" ? "波及損失" : "Spillover"}: ${fmtMoney(h.loss)}`,
+      { sticky: true, direction: "top", className: "ripple-tip" }
+    );
     animate({
       duration: 900, delay: 100 + 70*i, ease: "outQuart",
-      update: tt => line.setStyle({ opacity: (0.25 + 0.55 * ratio) * tt })
+      update: tt => line.setStyle({ opacity: (0.3 + 0.55 * ratio) * tt })
     });
     const dst = L.circleMarker([h.c.lat, h.c.lng], {
       radius: 0, color: "#163a5f", weight: 1.4,
-      fillColor: "#163a5f", fillOpacity: 0.7, interactive: false
+      fillColor: "#163a5f", fillOpacity: 0.75,
     }).addTo(rippleLayer);
+    dst.bindTooltip(`${h.c.name[LANG]} · ${fmtMoney(h.loss)}`, { direction: "top", opacity: 1 });
     animate({
       duration: 700, delay: 520 + 70*i, ease: "outBack",
       update: tt => dst.setRadius((3 + 9 * ratio) * tt)
     });
+    // only label the top 3 to keep the map legible
+    if (i < 3) {
+      const labelMarker = L.marker([h.c.lat, h.c.lng], {
+        icon: L.divIcon({
+          className: "ripple-label-div",
+          html: `<div class="ripple-label"><span class="rl-city">${h.c.name[LANG]}</span><span class="rl-loss">${fmtMoney(h.loss)}</span></div>`,
+          iconSize: [120, 32], iconAnchor: [-8, 8],
+        }),
+        interactive: false, keyboard: false, zIndexOffset: 700,
+      }).addTo(rippleLayer);
+    }
   });
 }
 
@@ -909,7 +1358,7 @@ function runSim() {
 
   // --- map visual ---
   map.flyTo([src.lat, src.lng], Math.max(map.getZoom(), 3), { duration: 0.8 });
-  drawRipple(src, top);
+  drawRipple(src, top, parseFloat($simHalt.value));
 }
 
 $simRun.addEventListener("click", runSim);

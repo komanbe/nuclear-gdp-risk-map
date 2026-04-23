@@ -112,13 +112,16 @@
           </select>
         </label>
         <p class="hint" data-i18n="hint_click">地図上の任意の点をクリックすると起爆。都市バブルをクリックすると単独の露出プロファイルを表示。</p>
-        <button id="clear" class="ghost" hidden>
-          <span class="pdot"></span><span data-i18n="clear_btn">起爆をクリア</span>
-        </button>
       </section>
 
       <section class="panel accent" id="result" hidden>
-        <h2><span class="panel-num">02</span><span data-i18n="result">露出する経済質量</span></h2>
+        <h2>
+          <span class="panel-num">02</span>
+          <span data-i18n="result">累積被害</span>
+          <button id="reset-inline" class="reset-inline" type="button">
+            <span data-i18n="reset_btn">すべてリセット</span>
+          </button>
+        </h2>
         <div id="result-body"></div>
       </section>
 
@@ -205,6 +208,7 @@
           </dl>
           <hr class="rule">
           <div class="ripple-heading" data-i18n="sim_r_ripple">波及上位都市</div>
+          <p class="ripple-legend-hint" data-i18n="ripple_legend">線 = 貿易依存と金融ハブ連鎖による被害の流れ。太さ/濃さ=被害額。</p>
           <ul class="hits" id="sim-ripple"></ul>
           <p class="hint small" data-i18n="sim_r_formula">CC<sub>macro</sub> = α·直接 + β·貿易波及 + γ·金融波及(本実装は expectation を省略)。</p>
         </div>
