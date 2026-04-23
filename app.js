@@ -259,10 +259,17 @@ function applyLang() {
   if (typeof allDetonations !== "undefined") {
     allDetonations.forEach(d => {
       if (!d.hazard) return;
-      const place = d.cityMatch ? d.cityMatch.name : { ja: t("narr_unknown"), en: t("narr_unknown") };
+      const cm = d.cityMatch;
+      const km = cm ? Math.round(cm.distKm) : 0;
+      const placeJa = cm
+        ? (cm.near ? `${cm.city.name.ja}近郊 ${km}km` : cm.city.name.ja)
+        : "任意地点";
+      const placeEn = cm
+        ? (cm.near ? `near ${cm.city.name.en} (${km} km)` : cm.city.name.en)
+        : "Off-metro";
       d.hazard.setIcon(L.divIcon({
         className: "hazard-div",
-        html: hazardIconHTML(place.ja, place.en),
+        html: hazardIconHTML(placeJa, placeEn),
         iconSize: [88, 68], iconAnchor: [44, 34],
       }));
     });
@@ -423,6 +430,7 @@ const eases = {
   outBack:  t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t-1,3) + c1 * Math.pow(t-1,2); },
 };
 function animate({ duration=600, delay=0, ease="outCubic", update, done }) {
+  update(eases[ease](0));
   const start = performance.now() + delay;
   function step(now) {
     const t = Math.max(0, Math.min(1, (now - start) / duration));
@@ -654,7 +662,16 @@ function findNearestCity(pt, maxKm = 120) {
     const d = haversine(pt, { lat: c.lat, lng: c.lng });
     if (d < bestD) { bestD = d; best = c; }
   });
-  return bestD <= maxKm ? best : null;
+  if (bestD > maxKm) return null;
+  return { city: best, distKm: bestD, near: bestD > 150 };
+}
+
+function placeLabel(cityMatch) {
+  if (!cityMatch) return t("narr_unknown");
+  const cname = cityMatch.city.name[LANG];
+  if (!cityMatch.near) return cname;
+  const km = Math.round(cityMatch.distKm);
+  return LANG === "ja" ? `${cname}近郊 ${km}km` : `near ${cname} (${km} km)`;
 }
 
 // -------------------- DETONATION --------------------
@@ -774,7 +791,7 @@ function detonate(pt, opts = {}) {
   const { hits } = computeHitsFor(pt, lastKt, lastBurst);
   const totalGDP = hits.reduce((s, h) => s + h.gdpExp, 0);
   const totalPop = hits.reduce((s, h) => s + h.popExp, 0);
-  const cityMatch = findNearestCity(pt, 150);
+  const cityMatch = findNearestCity(pt, 500);
 
   // 1. FIREBALL CORE — transient pinhole
   const fireballCore = L.circleMarker(pt, {
@@ -885,8 +902,14 @@ function detonate(pt, opts = {}) {
     layer: detLayer, cityMatch,
   };
   setTimeout(() => {
-    const placeJa = cityMatch ? cityMatch.name.ja : t("narr_unknown");
-    const placeEn = cityMatch ? cityMatch.name.en : t("narr_unknown");
+    const prevLang = LANG;
+    const km = cityMatch ? Math.round(cityMatch.distKm) : 0;
+    const placeJa = cityMatch
+      ? (cityMatch.near ? `${cityMatch.city.name.ja}近郊 ${km}km` : cityMatch.city.name.ja)
+      : (prevLang === "ja" ? "任意地点" : "");
+    const placeEn = cityMatch
+      ? (cityMatch.near ? `near ${cityMatch.city.name.en} (${km} km)` : cityMatch.city.name.en)
+      : "Off-metro";
     const hazardMark = L.marker([pt.lat, pt.lng], {
       icon: L.divIcon({
         className: "hazard-div",
@@ -932,9 +955,13 @@ function computeHits() { return computeHitsFor(lastPt, lastKt, lastBurst); }
 
 // -------------------- NARRATIVE --------------------
 function generateDispatch(det) {
-  const { cityMatch: c, kt, burst, pt, totalGDP, totalPop } = det;
-  const flavor = pickFlavor(c);
-  const place = c ? c.name[LANG] : t("narr_unknown");
+  const { cityMatch: cm, kt, burst, pt, totalGDP, totalPop } = det;
+  const c = cm ? cm.city : null;
+  const near = cm ? cm.near : false;
+  const distKm = cm ? Math.round(cm.distKm) : 0;
+  const flavor = (c && !near) ? pickFlavor(c) : null;
+  const cityName = c ? c.name[LANG] : null;
+  const place = placeLabel(cm);
   const area  = flavor ? flavor[LANG + "_area"] : (LANG === "ja" ? "中心部" : "its central district");
   const sector = flavor ? flavor[LANG + "_sectors"]
                         : (LANG === "ja"
@@ -945,19 +972,32 @@ function generateDispatch(det) {
   const modeLabel = burst === "ground" ? t("r_groundburst") : t("r_airburst");
 
   if (LANG === "ja") {
-    const lead = `${place}の${area}に ${ktLabel} 級弾頭が${modeLabel}で着弾。`;
-    const lost = `${sector}が失われた。`;
+    const lead = near
+      ? `${cityName}から約 ${distKm}km の郊外に ${ktLabel} 級弾頭が${modeLabel}で着弾。`
+      : (cm ? `${place}の${area}に ${ktLabel} 級弾頭が${modeLabel}で着弾。`
+             : `海上・非集積地に ${ktLabel} 級弾頭が${modeLabel}で着弾。`);
+    const lost = near
+      ? `郊外の住宅地・物流拠点・中小工業団地が${ktLabel}級の熱風圏に入った。`
+      : (cm ? `${sector}が失われた。`
+             : `主要な経済資本は射程外だが、降下物と大気擾乱は広域に及ぶ。`);
     const imp  = `この一撃で約 ${fmtYen(totalGDP)}（${fmtUSD(totalGDP)} 相当）の経済資本と、${fmtPop(totalPop)}の影響人口が計上される。`;
-    const rip  = ripple ? `${ripple}。` : "";
+    const rip  = (ripple && !near) ? `${ripple}。` : "";
     const cum  = cumulative.count > 1
       ? `ここまでの累積は ${cumulative.count} 発 / ${fmtYen(cumulative.gdpB)}。`
       : "";
     return { lead, lost, imp, rip, cum };
   } else {
-    const lead = `A ${ktLabel} warhead struck ${place} (${area}) as a${modeLabel[0] === 'A' ? "n" : ""} ${modeLabel.toLowerCase()}.`;
-    const lost = `${sector[0].toUpperCase()}${sector.slice(1)} was erased.`;
+    const leadAir = `a${modeLabel[0] === 'A' ? "n" : ""} ${modeLabel.toLowerCase()}`;
+    const lead = near
+      ? `A ${ktLabel} warhead struck about ${distKm} km outside ${cityName} as ${leadAir}.`
+      : (cm ? `A ${ktLabel} warhead struck ${place} (${area}) as ${leadAir}.`
+             : `A ${ktLabel} warhead detonated over open sea / off-metro terrain as ${leadAir}.`);
+    const lost = near
+      ? `Suburban residences, logistics hubs, and mid-scale industrial belts caught the thermal pulse.`
+      : (cm ? `${sector[0].toUpperCase()}${sector.slice(1)} was erased.`
+             : `No major economic capital was in range, but fallout and atmospheric disturbance spread wide.`);
     const imp  = `This single strike books approximately ${fmtUSD(totalGDP)} (${fmtYen(totalGDP)}) of economic capital and ${fmtPop(totalPop)} in affected population.`;
-    const rip  = ripple ? `${ripple[0].toUpperCase()}${ripple.slice(1)}.` : "";
+    const rip  = (ripple && !near) ? `${ripple[0].toUpperCase()}${ripple.slice(1)}.` : "";
     const cum  = cumulative.count > 1
       ? `Running total: ${cumulative.count} strikes / ${fmtUSD(cumulative.gdpB)}.`
       : "";
@@ -1010,7 +1050,7 @@ function renderCumulative(latestDet) {
   } else {
     const items = [...allDetonations].reverse().map((d, idx) => {
       const story = generateDispatch(d);
-      const placeName = d.cityMatch ? d.cityMatch.name[LANG] : t("narr_unknown");
+      const placeName = placeLabel(d.cityMatch);
       const ktLabel = fmtYieldLabel(d.kt);
       const modeLabel = d.burst === "ground" ? t("r_groundburst") : t("r_airburst");
       const isLatest = idx === 0;
