@@ -39,16 +39,24 @@ const I18N = {
     layer_fallout: "フォールアウト・プルーム",
     layers_hint:   "追加の負債レイヤーはスキーマに雛形を確保。Outrider 側と出典を合意次第、差し込み可能。",
 
-    roadmap:       "拡張ロードマップ",
-    roadmap_lead:  "本プロトタイプは都市GDPの即時損失のみを扱う。次段階では『都市が止まると世界がどれだけ止まるか』を測る GIS へ拡張する。",
-    rm_l1_h:       "都市ノード属性 ",
-    rm_l1_b:       "GDP / 産業構成 / 港湾・空港 / 金融中心性 / 雇用。",
-    rm_l2_h:       "依存ネットワーク ",
-    rm_l2_b:       "サプライチェーン(OECD ICIO)・物流・金融ハブ依存をグラフ化。",
-    rm_l3_h:       "ショック投入 ",
-    rm_l3_b:       "核 / 地震・津波 / 原発事故 / 港湾封鎖 / 紛争 ——『都市機能停止率 0–100%』で統一。",
-    rm_caption:    "附則A(ミクロ) / 附則B(マクロ)を可視化する実装基盤。",
-    roadmap_scope: "初期実装範囲: 北東アジア主要都市 + グローバル金融中心(NY / London / HK)。",
+    sim_title:     "拡張モデル · 都市停止シミュレータ",
+    sim_lead:      "核・地震・原発事故・港湾封鎖・紛争 —— 原因を問わず『都市機能停止率』に統一。貿易依存(OECD ICIO 水準の近似)と金融ハブ連鎖から、世界GDPへの波及を概算。",
+    sim_city_label:"対象都市",
+    sim_halt_label:"機能停止率",
+    sim_duration_label:"継続期間",
+    preset_nuclear:"核起爆",
+    preset_quake:  "大地震",
+    preset_npp:    "原発事故",
+    preset_port:   "港湾封鎖",
+    preset_conflict:"地域紛争",
+    sim_run:       "シミュレーション実行",
+    sim_r_direct:  "都市GDP損失(直接)",
+    sim_r_national:"国GDP損失",
+    sim_r_world:   "世界GDP損失(合計)",
+    sim_r_fin:     "金融ハブ波及",
+    sim_r_share:   "世界GDP比",
+    sim_r_ripple:  "波及上位都市",
+    sim_r_formula: "CC<sub>macro</sub> = α·直接 + β·貿易波及 + γ·金融波及(本実装は expectation を省略)。",
 
     about:         "概要",
     about_body:    '本プロトタイプは、都市を<b>経済と制度的記憶の密で非代替な貯蔵庫</b>として扱う。単一の起爆は、数十年にわたる複利的資本・記録・生活史を瞬時に蒸発させる —— 現行の核戦略下で潜在化し、<span class="term" data-def-ja="NPT: 核兵器不拡散条約。1968年成立。保有国に軍縮、非保有国に取得禁止を課す。" data-def-en="NPT — Nuclear Non-Proliferation Treaty (1968). Commits nuclear states to disarmament, others to foregoing weapons.">NPT</span>議論では価格付けされていない負債である。',
@@ -123,16 +131,24 @@ const I18N = {
     layer_fallout: "Fallout plume",
     layers_hint:   "Additional liability layers stubbed in schema. Drop-in once sources are agreed with Outrider.",
 
-    roadmap:       "Extension roadmap",
-    roadmap_lead:  "This prototype scores only the immediate metro-GDP loss. Next: extend to a GIS that prices ‘how much the world stops when a city stops’.",
-    rm_l1_h:       "City-node attributes ",
-    rm_l1_b:       "GDP, industry mix, ports & airports, financial centrality, employment.",
-    rm_l2_h:       "Dependency network ",
-    rm_l2_b:       "Supply chain (OECD ICIO), logistics, financial-hub dependency — modeled as a graph.",
-    rm_l3_h:       "Shock injection ",
-    rm_l3_b:       "Nuclear / earthquake-tsunami / NPP accident / port blockade / conflict — unified as ‘city-function-halt rate 0–100%’.",
-    rm_caption:    "Implementation layer for Appendix A (micro) and B (macro) of the companion paper.",
-    roadmap_scope: "Initial scope: major NE Asia metros + global finance hubs (NY / London / HK).",
+    sim_title:     "Extension model · City-halt simulator",
+    sim_lead:      "Nuclear / earthquake / NPP accident / port blockade / conflict — all unified as a single ‘city-function halt rate’. Ripple to world GDP is estimated from a trade-dependency matrix (OECD ICIO-scale approximation) plus a finance-hub channel.",
+    sim_city_label:"Target city",
+    sim_halt_label:"Halt rate",
+    sim_duration_label:"Duration",
+    preset_nuclear:"Nuclear",
+    preset_quake:  "Earthquake",
+    preset_npp:    "NPP accident",
+    preset_port:   "Port blockade",
+    preset_conflict:"Regional conflict",
+    sim_run:       "Run simulation",
+    sim_r_direct:  "Direct metro-GDP loss",
+    sim_r_national:"National GDP loss",
+    sim_r_world:   "World GDP loss (total)",
+    sim_r_fin:     "Finance-hub ripple",
+    sim_r_share:   "Share of world GDP",
+    sim_r_ripple:  "Top affected metros",
+    sim_r_formula: "CC<sub>macro</sub> = α·direct + β·trade ripple + γ·finance ripple (expectation omitted in this build).",
 
     about:         "About",
     about_body:    'This prototype treats cities as <b>dense, non-substitutable reservoirs of economic and institutional memory</b>. A single detonation vaporizes decades of compounded capital, records, and lived history — a liability made latent by current nuclear posture and largely unpriced in <span class="term" data-def-ja="NPT: 核兵器不拡散条約。1968年成立。保有国に軍縮、非保有国に取得禁止を課す。" data-def-en="NPT — Nuclear Non-Proliferation Treaty (1968). Commits nuclear states to disarmament, others to foregoing weapons.">NPT</span> discourse.',
@@ -210,7 +226,9 @@ function applyLang() {
   // re-render dynamic content if active
   if (lastPt) renderResult();
   if (lastCity) showCity(lastCity);
-  if (cityLayer) cityLayer.eachLayer(l => l.setTooltipContent ? l.setTooltipContent(l._cityRef.name[LANG]) : null);
+  if (typeof cityLayer !== "undefined" && cityLayer) cityLayer.eachLayer(l => l.setTooltipContent ? l.setTooltipContent(l._cityRef.name[LANG]) : null);
+  const simResultEl = document.getElementById("sim-result");
+  if (simResultEl && !simResultEl.hidden && typeof runSim === "function") runSim();
 }
 
 document.querySelectorAll(".lang-btn").forEach(btn => {
@@ -380,6 +398,8 @@ function renderCities() {
     m.on("click", e => {
       L.DomEvent.stopPropagation(e);
       showCity(c);
+      const simSel = document.getElementById("sim-city");
+      if (simSel) simSel.value = CITIES.indexOf(c);
       map.flyTo([c.lat, c.lng], Math.max(map.getZoom(), 4), { duration: 0.7 });
     });
     cityLayer.addLayer(m);
@@ -441,6 +461,14 @@ function triggerFlash(containerPoint) {
   $flash.classList.add("fire");
 }
 
+function triggerShake() {
+  const mapEl = document.getElementById("map");
+  mapEl.classList.remove("shake");
+  void mapEl.offsetWidth;
+  mapEl.classList.add("shake");
+  setTimeout(() => mapEl.classList.remove("shake"), 520);
+}
+
 function detonate(pt, opts = {}) {
   clearAll();
   lastPt = pt;
@@ -449,45 +477,114 @@ function detonate(pt, opts = {}) {
 
   const cp = map.latLngToContainerPoint(pt);
   triggerFlash(cp);
+  triggerShake();
 
   const r = blastRadii(lastKt, lastBurst);
-  // epicenter
-  epicenter = L.circleMarker(pt, { radius: 0, color: "#17181a", weight: 1.5, fillColor: "#17181a", fillOpacity: 1 }).addTo(map);
-  animate({ duration: 500, ease: "outBack", update: t => epicenter.setRadius(4.5 * t) });
+  const mToKm = r.moderate * 1000;
 
-  // rings (draw in order: moderate first for stacking, then thermal, then severe on top)
+  // 1. FIREBALL CORE — bright pinhole at center
+  const fireballCore = L.circleMarker(pt, {
+    radius: 0, color: "#fffbea", weight: 0, fillColor: "#fffbea",
+    fillOpacity: 1, interactive: false
+  }).addTo(shockLayer);
+  animate({ duration: 180, ease: "outQuart", update: tt => fireballCore.setRadius(10 * tt + 2) });
+  animate({
+    duration: 700, delay: 180, ease: "outQuart",
+    update: tt => { fireballCore.setStyle({ fillOpacity: 1 - tt }); fireballCore.setRadius(12 + 24 * tt); },
+    done: () => shockLayer.removeLayer(fireballCore)
+  });
+
+  // 2. THERMAL NOVA — amber halo
+  const nova = L.circleMarker(pt, {
+    radius: 0, color: "#c47418", weight: 0, fillColor: "#c47418",
+    fillOpacity: 0.55, interactive: false
+  }).addTo(shockLayer);
+  animate({
+    duration: 600, delay: 80, ease: "outQuart",
+    update: tt => { nova.setRadius(42 * tt); nova.setStyle({ fillOpacity: 0.55 * (1 - tt*0.9) }); },
+    done: () => shockLayer.removeLayer(nova)
+  });
+
+  // 3. EPICENTER + halo pulse
+  epicenter = L.circleMarker(pt, {
+    radius: 0, color: "#17181a", weight: 1.5,
+    fillColor: "#17181a", fillOpacity: 1
+  }).addTo(map);
+  animate({ duration: 520, delay: 220, ease: "outBack", update: tt => epicenter.setRadius(4.5 * tt) });
+  const epiHalo = L.circleMarker(pt, {
+    radius: 0, color: "#17181a", weight: 1, fill: false, opacity: 0.5, interactive: false
+  }).addTo(shockLayer);
+  animate({
+    duration: 1100, delay: 280, ease: "outQuart",
+    update: tt => { epiHalo.setRadius(22 * tt); epiHalo.setStyle({ opacity: 0.5 * (1 - tt) }); },
+    done: () => shockLayer.removeLayer(epiHalo)
+  });
+
+  // 4. DAMAGE RINGS — stagger + intensify
   const ringSpecs = [
-    { km: r.moderate, color: "#ae8b13", fill: "#ae8b13", fillOpacity: 0.08, weight: 1.2, delay: 120 },
-    { km: r.thermal,  color: "#c47418", fill: "#c47418", fillOpacity: 0.10, weight: 1.2, delay: 260 },
-    { km: r.severe,   color: "#c1292e", fill: "#c1292e", fillOpacity: 0.18, weight: 1.5, delay: 400 },
+    { km: r.moderate, color: "#ae8b13", fill: "#ae8b13", fillOpacity: 0.08, weight: 1.2, delay: 300, dur: 860 },
+    { km: r.thermal,  color: "#c47418", fill: "#c47418", fillOpacity: 0.10, weight: 1.2, delay: 440, dur: 860 },
+    { km: r.severe,   color: "#c1292e", fill: "#c1292e", fillOpacity: 0.20, weight: 1.5, delay: 580, dur: 860 },
   ];
   ringSpecs.forEach(spec => {
-    const ring = L.circle(pt, { radius: 10, color: spec.color, weight: spec.weight, fillColor: spec.fill, fillOpacity: 0 }).addTo(ringsLayer);
+    const ring = L.circle(pt, {
+      radius: 10, color: spec.color, weight: spec.weight,
+      fillColor: spec.fill, fillOpacity: 0, opacity: 0
+    }).addTo(ringsLayer);
     animate({
-      duration: 720, delay: spec.delay, ease: "outQuart",
+      duration: spec.dur, delay: spec.delay, ease: "outQuart",
       update: tt => {
         ring.setRadius(spec.km * 1000 * tt);
-        ring.setStyle({ fillOpacity: spec.fillOpacity * tt });
+        ring.setStyle({ fillOpacity: spec.fillOpacity * tt, opacity: 0.2 + 0.7 * tt });
       }
     });
   });
 
-  // shockwave
-  const shock = L.circle(pt, { radius: 0, color: "#17181a", weight: 1, fill: false, opacity: 0.35 }).addTo(shockLayer);
-  animate({
-    duration: 1400, delay: 100, ease: "outQuart",
-    update: tt => {
-      shock.setRadius(r.moderate * 1000 * 1.4 * tt);
-      shock.setStyle({ opacity: 0.35 * (1 - tt) });
-    },
-    done: () => shockLayer.removeLayer(shock)
-  });
+  // 5. SHOCKWAVES — double pulse
+  const mkShock = (delay, dur, maxScale, opacity, color) => {
+    const s = L.circle(pt, { radius: 0, color, weight: 1.2, fill: false, opacity, interactive: false }).addTo(shockLayer);
+    animate({
+      duration: dur, delay, ease: "outQuart",
+      update: tt => {
+        s.setRadius(mToKm * maxScale * tt);
+        s.setStyle({ opacity: opacity * (1 - tt) });
+      },
+      done: () => shockLayer.removeLayer(s)
+    });
+  };
+  mkShock(160, 1600, 1.55, 0.45, "#17181a");
+  mkShock(620, 1900, 1.95, 0.22, "#6a6f77");
+
+  // 6. DUST EJECTIONS — radial scatter
+  const dustCount = 12;
+  const latRad = pt.lat * Math.PI / 180;
+  const latScale = 111000;
+  const lngScale = 111000 * Math.cos(latRad);
+  for (let i = 0; i < dustCount; i++) {
+    const ang = (i / dustCount) * 2 * Math.PI + Math.random() * 0.35;
+    const reach = mToKm * (0.55 + Math.random() * 0.55);
+    const d = L.circleMarker(pt, {
+      radius: 1.4, color: "#45474a", weight: 0,
+      fillColor: "#45474a", fillOpacity: 0.7, interactive: false
+    }).addTo(shockLayer);
+    animate({
+      duration: 1100 + Math.random() * 500,
+      delay: 320 + Math.random() * 320,
+      ease: "outQuart",
+      update: tt => {
+        const lat = pt.lat + (reach/latScale) * Math.sin(ang) * tt;
+        const lng = pt.lng + (reach/(lngScale||1)) * Math.cos(ang) * tt;
+        d.setLatLng([lat, lng]);
+        d.setStyle({ fillOpacity: 0.7 * (1 - tt) });
+      },
+      done: () => shockLayer.removeLayer(d)
+    });
+  }
 
   $legend.hidden = false;
   $clear.hidden = false;
 
-  // result after rings have started
-  setTimeout(() => renderResult(), 450);
+  setTimeout(() => renderResult(), 640);
 }
 
 map.on("click", e => {
@@ -615,6 +712,210 @@ document.getElementById("layer-gdp").addEventListener("change", e => {
   if (e.target.checked) map.addLayer(cityLayer);
   else map.removeLayer(cityLayer);
 });
+
+// ==================== CITY-HALT SIMULATOR (Layer 3 / GIS ext.) ====================
+const $simCity   = document.getElementById("sim-city");
+const $simHalt   = document.getElementById("sim-halt");
+const $simHaltVal= document.getElementById("sim-halt-val");
+const $simDur    = document.getElementById("sim-duration");
+const $simRun    = document.getElementById("sim-run");
+const $simResult = document.getElementById("sim-result");
+const $simRipple = document.getElementById("sim-ripple");
+
+// Pre-compute: sum of our-sample city GDPs within each country
+const COUNTRY_CITY_GDP = {};
+CITIES.forEach(c => { COUNTRY_CITY_GDP[c.cc] = (COUNTRY_CITY_GDP[c.cc] || 0) + c.gdp; });
+
+function populateSimCity() {
+  $simCity.innerHTML = "";
+  [...CITIES]
+    .map((c, i) => ({ c, i }))
+    .sort((a, b) => b.c.gdp - a.c.gdp)
+    .forEach(({ c, i }) => {
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.setAttribute("data-ja", c.name.ja + " · " + c.cc + " · $" + c.gdp + "B");
+      opt.setAttribute("data-en", c.name.en + " · " + c.cc + " · $" + c.gdp + "B");
+      opt.textContent = (LANG === "ja" ? c.name.ja : c.name.en) + " · " + c.cc + " · $" + c.gdp + "B";
+      $simCity.appendChild(opt);
+    });
+}
+populateSimCity();
+
+$simHalt.addEventListener("input", () => { $simHaltVal.textContent = $simHalt.value + "%"; });
+
+document.querySelectorAll(".shock-chip").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".shock-chip").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    $simHalt.value = btn.getAttribute("data-halt");
+    $simHaltVal.textContent = $simHalt.value + "%";
+    $simDur.value = btn.getAttribute("data-dur");
+  });
+});
+
+// Ripple layer (polylines + destination dots)
+const rippleLayer = L.layerGroup().addTo(map);
+
+function buildArcPoints(a, b, N = 28) {
+  // Quadratic-bezier curve with perpendicular offset for a gentle arc
+  const dLat = b.lat - a.lat;
+  const dLng = b.lng - a.lng;
+  const dist = Math.hypot(dLat, dLng);
+  const nx = -dLng / (dist || 1);
+  const ny =  dLat / (dist || 1);
+  const off = dist * 0.18;
+  const cx = (a.lat + b.lat) / 2 + nx * off;
+  const cy = (a.lng + b.lng) / 2 + ny * off;
+  const pts = [];
+  for (let i = 0; i <= N; i++) {
+    const tt = i / N;
+    const u = 1 - tt;
+    pts.push([ u*u*a.lat + 2*u*tt*cx + tt*tt*b.lat,
+               u*u*a.lng + 2*u*tt*cy + tt*tt*b.lng ]);
+  }
+  return pts;
+}
+
+function drawRipple(src, tops) {
+  rippleLayer.clearLayers();
+
+  // source pulse
+  const srcRing = L.circleMarker([src.lat, src.lng], {
+    radius: 0, color: "#a8231f", weight: 2, fill: false, opacity: 0.7, interactive: false
+  }).addTo(rippleLayer);
+  animate({
+    duration: 1400, ease: "outQuart",
+    update: tt => { srcRing.setRadius(4 + 40 * tt); srcRing.setStyle({ opacity: 0.7 * (1 - tt) }); }
+  });
+  L.circleMarker([src.lat, src.lng], {
+    radius: 7, color: "#a8231f", weight: 2, fillColor: "#a8231f", fillOpacity: 0.85, interactive: false
+  }).addTo(rippleLayer);
+
+  const maxLoss = tops[0] ? tops[0].loss : 1;
+  tops.forEach((h, i) => {
+    const ratio = h.loss / maxLoss;
+    const pts = buildArcPoints({ lat: src.lat, lng: src.lng }, h.c, 28);
+    const line = L.polyline(pts, {
+      color: "#163a5f",
+      weight: 0.6 + ratio * 3.2,
+      opacity: 0,
+      smoothFactor: 1,
+      interactive: false
+    }).addTo(rippleLayer);
+    animate({
+      duration: 900, delay: 100 + 70*i, ease: "outQuart",
+      update: tt => line.setStyle({ opacity: (0.25 + 0.55 * ratio) * tt })
+    });
+    const dst = L.circleMarker([h.c.lat, h.c.lng], {
+      radius: 0, color: "#163a5f", weight: 1.4,
+      fillColor: "#163a5f", fillOpacity: 0.7, interactive: false
+    }).addTo(rippleLayer);
+    animate({
+      duration: 700, delay: 520 + 70*i, ease: "outBack",
+      update: tt => dst.setRadius((3 + 9 * ratio) * tt)
+    });
+  });
+}
+
+function runSim() {
+  const idx = parseInt($simCity.value, 10);
+  const src = CITIES[idx];
+  if (!src) return;
+  const halt = parseFloat($simHalt.value) / 100;
+  const days = parseFloat($simDur.value);
+  const durFrac = days / 365;
+
+  const countryCityGDP = COUNTRY_CITY_GDP[src.cc] || src.gdp;
+  const srcShareOfCountry = src.gdp / countryCityGDP;
+
+  // --- Layer 1: direct ---
+  const direct = src.gdp * halt * durFrac;
+
+  // --- Layer 2: trade ripple ---
+  const deps = TRADE_DEPS[src.cc] || {};
+  const tradeByCountry = {};
+  Object.entries(deps).forEach(([dstCC, weight]) => {
+    if (dstCC === src.cc) return;
+    const dstGDP = COUNTRY_GDP[dstCC];
+    if (!dstGDP) return;
+    tradeByCountry[dstCC] = weight * dstGDP * halt * durFrac * srcShareOfCountry;
+  });
+
+  // --- National: direct + partial country spillover (crude: 1.4× direct, capped at country annualized) ---
+  const nationalGDP = COUNTRY_GDP[src.cc] || countryCityGDP;
+  const nationalCap = nationalGDP * durFrac * halt;
+  const nationalLoss = Math.min(direct * 1.4, nationalCap);
+
+  // --- Finance ripple: global credit/liquidity channel ---
+  const finWeight = (src.fin || 0) / 100;
+  const globalFin = finWeight * halt * durFrac * FIN_CHANNEL * WORLD_GDP_B;
+
+  // Allocate finance loss by country (fin_score × gdp weights)
+  const finByCountry = {};
+  let finWS = 0;
+  Object.keys(COUNTRY_GDP).forEach(cc => {
+    if (cc === src.cc) return;
+    finByCountry[cc] = (COUNTRY_FIN[cc] || 30) / 100 * COUNTRY_GDP[cc];
+    finWS += finByCountry[cc];
+  });
+  Object.keys(finByCountry).forEach(cc => { finByCountry[cc] = globalFin * finByCountry[cc] / finWS; });
+
+  // Allocate country-level losses to cities in our sample
+  const cityRipple = [];
+  const allCC = new Set([...Object.keys(tradeByCountry), ...Object.keys(finByCountry)]);
+  allCC.forEach(cc => {
+    const countryLoss = (tradeByCountry[cc] || 0) + (finByCountry[cc] || 0);
+    const ccGdp = COUNTRY_CITY_GDP[cc];
+    if (!ccGdp || countryLoss <= 0) return;
+    CITIES.forEach(c => {
+      if (c.cc !== cc || c === src) return;
+      const loss = countryLoss * (c.gdp / ccGdp);
+      if (loss > 0.05) cityRipple.push({ c, loss });
+    });
+  });
+  cityRipple.sort((a, b) => b.loss - a.loss);
+
+  const tradeTotal = Object.values(tradeByCountry).reduce((a, b) => a + b, 0);
+  const worldTotal = direct + tradeTotal + globalFin;
+  const share = worldTotal / WORLD_GDP_B;
+
+  // --- render ---
+  const setV = (key, html) => { const el = $simResult.querySelector(`[data-sc="${key}"]`); if (el) el.innerHTML = html; };
+  setV("direct",   fmtGDP(direct));
+  setV("national", fmtGDP(nationalLoss));
+  setV("world",    fmtGDP(worldTotal));
+  setV("fin",      fmtGDP(globalFin));
+  setV("share",    fmtPct(share));
+
+  const top = cityRipple.slice(0, 8);
+  const maxLoss = top[0] ? top[0].loss : 1;
+  $simRipple.innerHTML = top.length
+    ? top.map(h => `
+      <li>
+        <span class="city">${h.c.name[LANG]}</span>
+        <span class="bar" style="--p:${(h.loss/maxLoss).toFixed(3)}"></span>
+        <span class="pct">${fmtGDP(h.loss)}</span>
+      </li>`).join("")
+    : '<li style="color:var(--ink-3);padding:8px 0;">—</li>';
+
+  $simResult.hidden = false;
+
+  // --- animate counters on the big numbers ---
+  const worldEl = $simResult.querySelector('[data-sc="world"]');
+  const directEl = $simResult.querySelector('[data-sc="direct"]');
+  animate({ duration: 900, ease: "outQuart", update: tt => worldEl.textContent = fmtGDP(worldTotal * tt) });
+  animate({ duration: 900, ease: "outQuart", update: tt => directEl.textContent = fmtGDP(direct * tt) });
+
+  // --- map visual ---
+  map.flyTo([src.lat, src.lng], Math.max(map.getZoom(), 3), { duration: 0.8 });
+  drawRipple(src, top);
+}
+
+$simRun.addEventListener("click", runSim);
+
+// When clicking a city bubble, also set it as simulator source
+document.addEventListener("DOMContentLoaded", () => {});
 
 // initial language apply (in case of EN query or first render)
 applyLang();

@@ -151,28 +151,63 @@
         <p class="hint small" data-i18n="layers_hint">追加の負債レイヤーはスキーマに雛形を確保。Outrider 側と出典を合意次第、差し込み可能。</p>
       </section>
 
-      <section class="panel stagger">
-        <h2><span class="panel-num">04</span><span data-i18n="roadmap">拡張ロードマップ</span></h2>
-        <p class="roadmap-lead" data-i18n="roadmap_lead">本プロトタイプは都市GDPの即時損失のみを扱う。次段階では『都市が止まると世界がどれだけ止まるか』を測る GIS へ拡張する。</p>
-        <ol class="roadmap">
-          <li>
-            <span class="rm-num">L1</span>
-            <div><b data-i18n="rm_l1_h">都市ノード属性</b><span data-i18n="rm_l1_b">GDP / 産業構成 / 港湾・空港 / 金融中心性 / 雇用。</span></div>
-          </li>
-          <li>
-            <span class="rm-num">L2</span>
-            <div><b data-i18n="rm_l2_h">依存ネットワーク</b><span data-i18n="rm_l2_b">サプライチェーン(OECD ICIO)・物流・金融ハブ依存をグラフ化。</span></div>
-          </li>
-          <li>
-            <span class="rm-num">L3</span>
-            <div><b data-i18n="rm_l3_h">ショック投入</b><span data-i18n="rm_l3_b">核 / 地震・津波 / 原発事故 / 港湾封鎖 / 紛争 ——『都市機能停止率 0–100%』で統一。</span></div>
-          </li>
-        </ol>
-        <p class="roadmap-formula">
-          <span class="rm-formula">CC<sub>macro</sub> = α·Σ CC<sub>rad,i</sub> + β·SC + γ·Finance + δ·Expectation</span>
-          <span class="rm-caption" data-i18n="rm_caption">附則A(ミクロ) / 附則B(マクロ)を可視化する実装基盤。</span>
-        </p>
-        <p class="hint small" data-i18n="roadmap_scope">初期実装範囲: 北東アジア主要都市 + グローバル金融中心(NY / London / HK)。</p>
+      <section class="panel stagger" id="sim-panel">
+        <h2><span class="panel-num">04</span><span data-i18n="sim_title">拡張モデル · 都市停止シミュレータ</span><span class="beta-tag">BETA</span></h2>
+        <p class="roadmap-lead" data-i18n="sim_lead">核・地震・原発事故・港湾封鎖・紛争 —— 原因を問わず『都市機能停止率』に統一。貿易依存(OECD ICIO 水準の近似)と金融ハブ連鎖から、世界GDPへの波及を概算。</p>
+
+        <label class="field">
+          <span data-i18n="sim_city_label">対象都市</span>
+          <select id="sim-city"></select>
+        </label>
+
+        <label class="field slider-field">
+          <span>
+            <span data-i18n="sim_halt_label">機能停止率</span>
+            <output id="sim-halt-val" class="slider-val">70%</output>
+          </span>
+          <input type="range" id="sim-halt" min="0" max="100" value="70" step="5">
+          <span class="slider-range">
+            <span>0%</span><span>50%</span><span>100%</span>
+          </span>
+        </label>
+
+        <label class="field">
+          <span data-i18n="sim_duration_label">継続期間</span>
+          <select id="sim-duration">
+            <option value="7"   data-ja="1 週間"  data-en="1 week">1 週間</option>
+            <option value="30" selected data-ja="1 ヶ月"  data-en="1 month">1 ヶ月</option>
+            <option value="90"  data-ja="3 ヶ月"  data-en="3 months">3 ヶ月</option>
+            <option value="180" data-ja="6 ヶ月"  data-en="6 months">6 ヶ月</option>
+            <option value="365" data-ja="1 年"    data-en="1 year">1 年</option>
+          </select>
+        </label>
+
+        <div class="shock-presets">
+          <button class="shock-chip" data-halt="90" data-dur="365"  data-i18n="preset_nuclear">核起爆</button>
+          <button class="shock-chip" data-halt="55" data-dur="180"  data-i18n="preset_quake">大地震</button>
+          <button class="shock-chip" data-halt="30" data-dur="365"  data-i18n="preset_npp">原発事故</button>
+          <button class="shock-chip" data-halt="40" data-dur="60"   data-i18n="preset_port">港湾封鎖</button>
+          <button class="shock-chip" data-halt="20" data-dur="90"   data-i18n="preset_conflict">地域紛争</button>
+        </div>
+
+        <button id="sim-run" class="primary-btn">
+          <span data-i18n="sim_run">シミュレーション実行</span>
+          <span class="arrow">→</span>
+        </button>
+
+        <div id="sim-result" hidden>
+          <dl>
+            <dt data-i18n="sim_r_direct">都市GDP損失(直接)</dt><dd><strong data-sc="direct">—</strong></dd>
+            <dt data-i18n="sim_r_national">国GDP損失</dt><dd data-sc="national">—</dd>
+            <dt data-i18n="sim_r_world">世界GDP損失(合計)</dt><dd><strong data-sc="world">—</strong></dd>
+            <dt data-i18n="sim_r_fin">金融ハブ波及</dt><dd data-sc="fin">—</dd>
+            <dt data-i18n="sim_r_share">世界GDP比</dt><dd data-sc="share">—</dd>
+          </dl>
+          <hr class="rule">
+          <div class="ripple-heading" data-i18n="sim_r_ripple">波及上位都市</div>
+          <ul class="hits" id="sim-ripple"></ul>
+          <p class="hint small" data-i18n="sim_r_formula">CC<sub>macro</sub> = α·直接 + β·貿易波及 + γ·金融波及(本実装は expectation を省略)。</p>
+        </div>
       </section>
 
       <section class="panel stagger">
@@ -209,6 +244,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="cities.js"></script>
+  <script src="deps.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -910,6 +910,170 @@ ul.hits .pct {
   border-top-color: var(--ink);
 }
 
+/* =================== SIMULATOR =================== */
+.beta-tag {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--navy);
+  background: var(--navy-2);
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+/* slider */
+.slider-field { display: block; }
+.slider-field > span:first-of-type {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+.slider-val {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--vermillion);
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+.slider-field input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 24px;
+  background: transparent;
+  margin: 0;
+  cursor: pointer;
+}
+.slider-field input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  background: linear-gradient(to right, var(--vermillion) 0%, var(--vermillion) calc(var(--v, 70%) ), var(--rule) calc(var(--v, 70%) ), var(--rule) 100%);
+  border-radius: 2px;
+}
+.slider-field input[type="range"]::-moz-range-track {
+  height: 3px;
+  background: var(--rule);
+  border-radius: 2px;
+}
+.slider-field input[type="range"]::-moz-range-progress {
+  background: var(--vermillion);
+  height: 3px;
+  border-radius: 2px;
+}
+.slider-field input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--vermillion);
+  margin-top: -6.5px;
+  box-shadow: 0 1px 3px rgba(168,35,31,0.25);
+  cursor: pointer;
+  transition: transform 140ms var(--ease);
+}
+.slider-field input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.15); }
+.slider-field input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--vermillion);
+  cursor: pointer;
+}
+.slider-range {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-4);
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+  padding: 0 2px;
+}
+
+/* shock presets */
+.shock-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+.shock-chip {
+  width: auto;
+  padding: 5px 10px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 160ms var(--ease);
+}
+.shock-chip:hover { border-color: var(--ink-3); color: var(--ink); }
+.shock-chip.active {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+
+/* primary sim run button */
+.primary-btn {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--navy);
+  color: #fff;
+  border: 1px solid var(--navy);
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 200ms var(--ease);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 3px;
+  margin-top: 4px;
+}
+.primary-btn:hover {
+  background: #0e2842;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(22,58,95,0.28);
+}
+.primary-btn .arrow { font-family: var(--mono); font-size: 13px; transition: transform 200ms var(--ease); }
+.primary-btn:hover .arrow { transform: translateX(3px); }
+
+/* sim result */
+#sim-result { margin-top: 14px; animation: rise 350ms var(--ease); }
+#sim-result dd strong { color: var(--navy); font-size: 14px; font-weight: 600; }
+.ripple-heading {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 10px 0 6px;
+  font-weight: 600;
+}
+#sim-ripple.hits .bar::after { background: var(--navy); }
+#sim-result .hint sub { font-size: 0.7em; color: var(--ink-3); }
+
+/* ripple path on map */
+.leaflet-interactive[stroke="#163a5f"] { stroke-dasharray: 4 3; animation: dashFlow 2s linear infinite; }
+@keyframes dashFlow { to { stroke-dashoffset: -14; } }
+
 /* =================== FLASH =================== */
 #flash {
   position: fixed;
@@ -948,6 +1112,18 @@ ul.hits .pct {
 @keyframes markPulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(193, 41, 46, 0); }
   50%      { box-shadow: 0 0 0 4px rgba(193, 41, 46, 0.08); }
+}
+
+/* map shake (detonation impact) */
+#map.shake { animation: mapShake 450ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+@keyframes mapShake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  10%      { transform: translate3d(-3px, 2px, 0); }
+  22%      { transform: translate3d(4px, -2px, 0); }
+  36%      { transform: translate3d(-3px, 3px, 0); }
+  50%      { transform: translate3d(2px, -2px, 0); }
+  66%      { transform: translate3d(-2px, 1px, 0); }
+  80%      { transform: translate3d(1px, -1px, 0); }
 }
 
 /* stagger */
