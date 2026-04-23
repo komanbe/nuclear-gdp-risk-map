@@ -91,7 +91,7 @@
     <aside id="sidebar">
 
       <section class="panel stagger">
-        <h2 data-i18n="scenario">シナリオ</h2>
+        <h2><span class="panel-num">01</span><span data-i18n="scenario">シナリオ</span></h2>
         <label class="field">
           <span data-i18n="yield_label">弾頭出力</span>
           <select id="yield">
@@ -118,17 +118,17 @@
       </section>
 
       <section class="panel accent" id="result" hidden>
-        <h2 data-i18n="result">露出する経済質量</h2>
+        <h2><span class="panel-num">02</span><span data-i18n="result">露出する経済質量</span></h2>
         <div id="result-body"></div>
       </section>
 
       <section class="panel stagger" id="city-info" hidden>
-        <h2 id="city-name"></h2>
+        <h2><span class="panel-num">·</span><span id="city-name"></span></h2>
         <div id="city-body"></div>
       </section>
 
       <section class="panel stagger">
-        <h2 data-i18n="layers">レイヤー</h2>
+        <h2><span class="panel-num">03</span><span data-i18n="layers">レイヤー</span></h2>
         <label class="toggle"><input type="checkbox" id="layer-gdp" checked><span data-i18n="layer_gdp">都市GDPバブル</span><span class="legend-dot" style="--sw: var(--vermillion)"></span></label>
         <label class="toggle"><input type="checkbox" disabled>
           <span class="term" data-def-ja="アーカイブ / 文化的記憶の損失: 国立公文書館・図書館・宗教文書・病院記録・企業本社文書庫など、物理的に一度失えば復元できない記録の集積。『都市の制度的記憶』を定量化するレイヤー。" data-def-en="Archival / cultural memory loss — the aggregate of irreplaceable physical records (national archives, libraries, religious manuscripts, hospital records, corporate HQ document stores). Quantifies a city's institutional memory.">
@@ -152,7 +152,31 @@
       </section>
 
       <section class="panel stagger">
-        <h2 data-i18n="about">概要</h2>
+        <h2><span class="panel-num">04</span><span data-i18n="roadmap">拡張ロードマップ</span></h2>
+        <p class="roadmap-lead" data-i18n="roadmap_lead">本プロトタイプは都市GDPの即時損失のみを扱う。次段階では『都市が止まると世界がどれだけ止まるか』を測る GIS へ拡張する。</p>
+        <ol class="roadmap">
+          <li>
+            <span class="rm-num">L1</span>
+            <div><b data-i18n="rm_l1_h">都市ノード属性</b><span data-i18n="rm_l1_b">GDP / 産業構成 / 港湾・空港 / 金融中心性 / 雇用。</span></div>
+          </li>
+          <li>
+            <span class="rm-num">L2</span>
+            <div><b data-i18n="rm_l2_h">依存ネットワーク</b><span data-i18n="rm_l2_b">サプライチェーン(OECD ICIO)・物流・金融ハブ依存をグラフ化。</span></div>
+          </li>
+          <li>
+            <span class="rm-num">L3</span>
+            <div><b data-i18n="rm_l3_h">ショック投入</b><span data-i18n="rm_l3_b">核 / 地震・津波 / 原発事故 / 港湾封鎖 / 紛争 ——『都市機能停止率 0–100%』で統一。</span></div>
+          </li>
+        </ol>
+        <p class="roadmap-formula">
+          <span class="rm-formula">CC<sub>macro</sub> = α·Σ CC<sub>rad,i</sub> + β·SC + γ·Finance + δ·Expectation</span>
+          <span class="rm-caption" data-i18n="rm_caption">附則A(ミクロ) / 附則B(マクロ)を可視化する実装基盤。</span>
+        </p>
+        <p class="hint small" data-i18n="roadmap_scope">初期実装範囲: 北東アジア主要都市 + グローバル金融中心(NY / London / HK)。</p>
+      </section>
+
+      <section class="panel stagger">
+        <h2><span class="panel-num">05</span><span data-i18n="about">概要</span></h2>
         <p data-i18n="about_body">本プロトタイプは、都市を<b>経済と制度的記憶の密で非代替な貯蔵庫</b>として扱う。単一の起爆は、数十年にわたる複利的資本・記録・生活史を瞬時に蒸発させる —— 現行の核戦略下で潜在化し、<span class="term" data-def-ja="NPT: 核兵器不拡散条約。" data-def-en="NPT: Nuclear Non-Proliferation Treaty.">NPT</span>議論では価格付けされていない負債である。</p>
         <p class="src" data-i18n="src">都市GDP: <span class="term" data-def-ja="Brookings Institution と JPMorgan Chase が共同で発行する、都市GDP・生産性の国際比較データセット。" data-def-en="International dataset of metro-level GDP and productivity, jointly published by Brookings Institution and JPMorgan Chase.">Brookings Global Metro Monitor</span> / Oxford Economics(参考値、2022–2023)。爆発半径: <span class="term" data-def-ja="1977年版『The Effects of Nuclear Weapons』。核兵器効果の標準参考書で、本ツールの爆発半径スケーリングもここに基づく。" data-def-en="Glasstone &amp; Dolan (1977), 'The Effects of Nuclear Weapons' — standard reference; the blast scaling in this tool follows its airburst tables.">Glasstone &amp; Dolan (1977)</span>.</p>
       </section>

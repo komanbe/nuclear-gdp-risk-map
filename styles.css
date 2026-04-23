@@ -1,23 +1,26 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg:         #f5f5f3;
+  --bg:         #f6f5f1;
   --panel:      #ffffff;
-  --ink:        #17181a;
-  --ink-2:      #45474a;
-  --ink-3:      #6c6e72;
-  --ink-4:      #9da0a5;
-  --rule:       #e3e3df;
-  --rule-2:     #edede8;
-  --blue:       #0e5fa8;
-  --blue-2:     #e8f1fb;
-  --vermillion: #c1292e;
-  --vermillion-2:#fdecec;
-  --amber:      #c47418;
-  --yellow:     #ae8b13;
-  --green:      #2d7a52;
-  --shadow:     0 1px 2px rgba(23,24,26,0.04), 0 4px 14px rgba(23,24,26,0.04);
-  --shadow-lg:  0 2px 4px rgba(23,24,26,0.05), 0 8px 24px rgba(23,24,26,0.06);
+  --ink:        #1a1d22;
+  --ink-2:      #42474f;
+  --ink-3:      #6a6f77;
+  --ink-4:      #9ba0a7;
+  --rule:       #dfdcd3;
+  --rule-2:     #ecebe4;
+  --navy:       #163a5f;
+  --navy-2:     #e6ecf2;
+  --blue:       #163a5f;
+  --blue-2:     #e6ecf2;
+  --vermillion: #a8231f;
+  --vermillion-2:#f7ebe8;
+  --amber:      #8b5a1a;
+  --yellow:     #7a6a15;
+  --earth:      #6b4423;
+  --green:      #2d5a3f;
+  --shadow:     0 1px 2px rgba(26,29,34,0.03), 0 3px 10px rgba(26,29,34,0.04);
+  --shadow-lg:  0 2px 4px rgba(26,29,34,0.04), 0 8px 22px rgba(26,29,34,0.05);
   --sans:       "Inter", "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
   --mono:       "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
   --ease:       cubic-bezier(0.2, 0.9, 0.2, 1);
@@ -453,23 +456,25 @@ main {
 .panel h2 {
   margin: 0 0 12px;
   font-family: var(--sans);
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  letter-spacing: 0.02em;
   color: var(--ink);
   font-weight: 700;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule-2);
 }
-.panel h2::before {
-  content: "";
-  width: 3px;
-  height: 11px;
-  background: var(--blue);
-  border-radius: 1px;
+.panel-num {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--navy);
+  flex-shrink: 0;
 }
-.panel.accent h2::before { background: var(--vermillion); }
+.panel.accent .panel-num { color: var(--vermillion); }
 .panel.accent h2 { color: var(--vermillion); }
 
 /* form */
@@ -569,6 +574,74 @@ button.ghost .pdot {
   padding-top: 10px;
   border-top: 1px dashed var(--rule);
   line-height: 1.55;
+}
+
+/* roadmap panel */
+.roadmap-lead {
+  font-size: 12px;
+  color: var(--ink-2);
+  margin: 0 0 10px;
+  line-height: 1.65;
+}
+ol.roadmap {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+  counter-reset: rm;
+}
+ol.roadmap li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px dotted var(--rule);
+  align-items: baseline;
+}
+ol.roadmap li:first-child { border-top: none; padding-top: 2px; }
+.rm-num {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--navy);
+  background: var(--navy-2);
+  padding: 2px 0;
+  text-align: center;
+  border-radius: 2px;
+  line-height: 1.3;
+}
+ol.roadmap li > div b {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+ol.roadmap li > div span {
+  font-size: 11.5px;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+.roadmap-formula {
+  margin: 10px 0 6px;
+  padding: 10px 12px;
+  background: var(--rule-2);
+  border-left: 2px solid var(--earth);
+  font-size: 11px;
+}
+.rm-formula {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+}
+.rm-caption {
+  display: block;
+  font-size: 10.5px;
+  color: var(--ink-3);
+  line-height: 1.5;
 }
 
 /* toggles */
