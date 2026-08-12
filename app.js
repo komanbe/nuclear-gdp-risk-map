@@ -1480,6 +1480,7 @@ function generateDispatch(det) {
 
 const CASCADE_TAG_LABEL = {
   impact:  { ja: "着弾",     en: "IMPACT" },
+  event:   { ja: "発生",     en: "EVENT" },
   metro:   { ja: "都市被害", en: "METRO" },
   survey:  { ja: "観測",     en: "SURVEY" },
   infra:   { ja: "インフラ", en: "INFRA" },
@@ -1501,7 +1502,7 @@ function cascadeHTML(phases) {
 // comment while the map plays the matching stage — city bubbles pulse, the
 // struck asset flashes, dependency arcs crawl out, then a world-scale ring.
 const PHASE_MS = 5000;
-const TAG_COLOR = { impact: "#a8231f", metro: "#8b5a1a", survey: "#6a6f77", infra: "#163a5f", cascade: "#2d5a3f", global: "#1a1d22" };
+const TAG_COLOR = { impact: "#a8231f", event: "#a8231f", metro: "#8b5a1a", survey: "#6a6f77", infra: "#163a5f", cascade: "#2d5a3f", global: "#1a1d22" };
 let storyTimers = [];
 let storyTypers = [];
 let storyPending = [];
@@ -1578,7 +1579,7 @@ function cancelStory(finalize) {
   storyTimers.forEach(id => clearTimeout(id));
   storyTypers.forEach(id => clearInterval(id));
   storyTimers = []; storyTypers = [];
-  if (finalize && storyDet) {
+  if (finalize && storyPending.length) {
     storyPending.forEach(p => {
       if (!p.typed && p.el) {
         p.el.classList.remove("cl-pending", "cl-typing");
@@ -1586,9 +1587,9 @@ function cancelStory(finalize) {
         const xEl = p.el.querySelector(".cl-x");
         if (xEl) xEl.textContent = p.full;
       }
-      if (!p.staged) runStageEffect(p.tag, storyDet, true);
+      if (!p.staged && p.effect) p.effect(true);
     });
-    if (storyDet.snap) setTallyDisplay(storyDet.snap); // land counters exactly on this strike's totals
+    if (storyDet && storyDet.snap) setTallyDisplay(storyDet.snap); // land counters exactly on this strike's totals
   }
   storyPending = [];
   storyDet = null;
@@ -1598,23 +1599,27 @@ function cancelStory(finalize) {
 }
 
 function typeLine(p) {
-  const xEl = p.el.querySelector(".cl-x");
-  p.el.classList.remove("cl-pending");
-  p.el.classList.add("cl-typing");
-  p.el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  const xEl = p.el ? p.el.querySelector(".cl-x") : null;
+  if (p.el) {
+    p.el.classList.remove("cl-pending");
+    p.el.classList.add("cl-typing");
+    p.el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
   $storyBar?.classList.add("sb-typing");
   const dur = 2400, start = performance.now();
-  xEl.textContent = "";
+  if (xEl) xEl.textContent = "";
   // progress is time-based so throttled timers (hidden tab) still finish on schedule
   const iv = setInterval(() => {
     const prog = Math.min(1, (performance.now() - start) / dur);
     const sliced = p.full.slice(0, Math.ceil(p.full.length * prog));
-    xEl.textContent = sliced;
+    if (xEl) xEl.textContent = sliced;
     if ($sbText) $sbText.textContent = sliced;
     if (prog >= 1) {
       clearInterval(iv);
-      p.el.classList.remove("cl-typing");
-      p.el.classList.add("cl-done");
+      if (p.el) {
+        p.el.classList.remove("cl-typing");
+        p.el.classList.add("cl-done");
+      }
       $storyBar?.classList.remove("sb-typing");
       p.typed = true;
     }
@@ -1622,40 +1627,33 @@ function typeLine(p) {
   storyTypers.push(iv);
 }
 
-function startStory(det, container) {
+// Generic staged commentary runner: items carry their own text, tag, and
+// map-effect closure. Used by nuclear strikes (with dispatch-line mirrors)
+// and by the shock-scenario stories (bar only).
+function runBarStory(items, strikeLabel, reconLatLng) {
   cancelStory(true); // fast-forward any running story before starting the next
-  storyDet = det;
   const chip = document.getElementById("live-chip");
   if (chip) chip.hidden = false;
 
-  // prominent commentary bar at the bottom of the map
   if ($storyBar) {
     $storyBar.hidden = false;
-    $sbStrike.textContent = `#${String(det.id).padStart(2, "0")} · ${placeLabel(det.cityMatch)}`;
+    $sbStrike.textContent = strikeLabel;
     $sbText.textContent = "";
     document.getElementById("map-wrap")?.classList.add("story-active");
     // recon close-up of ground zero — "this is what is there"
     const sbMedia = document.getElementById("sb-media");
     if (sbMedia) {
-      if (!window.NGRM_OFFLINE) {
-        sbMedia.innerHTML = reconHTML("story", det.pt.lat, det.pt.lng);
+      if (!window.NGRM_OFFLINE && reconLatLng) {
+        sbMedia.innerHTML = reconHTML("story", reconLatLng[0], reconLatLng[1]);
         sbMedia.hidden = false;
-        initRecon("story", det.pt.lat, det.pt.lng, 13);
+        initRecon("story", reconLatLng[0], reconLatLng[1], 13);
       } else {
         sbMedia.hidden = true;
       }
     }
   }
 
-  const lines = [...container.querySelectorAll(".cl-line")];
-  lines.forEach(l => l.classList.add("cl-pending"));
-  storyPending = lines.map(l => ({
-    el: l,
-    tag: l.getAttribute("data-tag"),
-    t: l.querySelector(".cl-t")?.textContent || "",
-    full: l.querySelector(".cl-x").textContent,
-    typed: false, staged: false,
-  }));
+  storyPending = items;
   storyPending.forEach((p, i) => {
     storyTimers.push(setTimeout(() => {
       p.staged = true;
@@ -1664,7 +1662,7 @@ function startStory(det, container) {
         $sbTag.style.setProperty("--sbc", TAG_COLOR[p.tag]);
         $sbT.textContent = p.t;
       }
-      runStageEffect(p.tag, det, false);
+      if (p.effect) p.effect(false);
       typeLine(p);
     }, 700 + i * PHASE_MS));
   });
@@ -1673,7 +1671,24 @@ function startStory(det, container) {
     if (c) c.hidden = true;
     hideStoryBar();
     storyDet = null; storyPending = [];
-  }, 700 + storyPending.length * PHASE_MS + 1800));
+  }, 700 + items.length * PHASE_MS + 1800));
+}
+
+function startStory(det, container) {
+  const lines = [...container.querySelectorAll(".cl-line")];
+  lines.forEach(l => l.classList.add("cl-pending"));
+  const items = lines.map(l => {
+    const tag = l.getAttribute("data-tag");
+    return {
+      el: l, tag,
+      t: l.querySelector(".cl-t")?.textContent || "",
+      full: l.querySelector(".cl-x").textContent,
+      typed: false, staged: false,
+      effect: inst => runStageEffect(tag, det, inst),
+    };
+  });
+  runBarStory(items, `#${String(det.id).padStart(2, "0")} · ${placeLabel(det.cityMatch)}`, [det.pt.lat, det.pt.lng]);
+  storyDet = det;
 }
 
 // transient expanding ring used by stage effects
@@ -2217,7 +2232,7 @@ $targetCity?.addEventListener("change", () => {
 updateTargetPreview();
 
 document.getElementById("fire-btn")?.addEventListener("click", () => {
-  if (scenarioMode !== "nuclear") { runSim(); return; }
+  if (scenarioMode !== "nuclear") { runSim(true); return; }
   const tgt = targetLatLng();
   if (!tgt) return;
   map.flyTo([tgt.lat, tgt.lng], Math.max(map.getZoom(), 5), { duration: 0.8 });
@@ -2297,24 +2312,20 @@ function buildArcPoints(a, b, N = 28) {
   return pts;
 }
 
-function drawRipple(src, tops, haltPct) {
-  rippleLayer.clearLayers();
-
-  // source pulse
+// Halt mark + source pulse at the stricken city (event phase of a sim story).
+function showHaltMark(src, haltPct) {
+  haltLayer.clearLayers();
   const srcRing = L.circleMarker([src.lat, src.lng], {
     radius: 0, color: "#a8231f", weight: 2, fill: false, opacity: 0.7, interactive: false
-  }).addTo(rippleLayer);
+  }).addTo(haltLayer);
   animate({
     duration: 1400, ease: "outQuart",
     update: tt => { srcRing.setRadius(4 + 40 * tt); srcRing.setStyle({ opacity: 0.7 * (1 - tt) }); }
   });
   L.circleMarker([src.lat, src.lng], {
     radius: 7, color: "#a8231f", weight: 2, fillColor: "#a8231f", fillOpacity: 0.85, interactive: false
-  }).addTo(rippleLayer);
-
-  // source halt divIcon (persistent, moved to haltLayer so sequential runs stack cleanly)
-  haltLayer.clearLayers();
-  const haltMark = L.marker([src.lat, src.lng], {
+  }).addTo(haltLayer);
+  L.marker([src.lat, src.lng], {
     icon: L.divIcon({
       className: "halt-div",
       html: haltIconHTML(src.name.ja, src.name.en, Math.round(haltPct)),
@@ -2322,15 +2333,20 @@ function drawRipple(src, tops, haltPct) {
     }),
     interactive: false, keyboard: false, zIndexOffset: 900,
   }).addTo(haltLayer);
+}
 
+// Spillover web for the halt sim (cascade phase of a sim story).
+function drawRippleArcs(src, tops, instant = false) {
+  rippleLayer.clearLayers();
   const maxLoss = tops[0] ? tops[0].loss : 1;
   tops.forEach((h, i) => {
     const ratio = h.loss / maxLoss;
     const pts = buildArcPoints({ lat: src.lat, lng: src.lng }, h.c, 28);
+    const finalOp = 0.3 + 0.55 * ratio;
     const line = L.polyline(pts, {
       color: "#163a5f",
       weight: 0.6 + ratio * 3.2,
-      opacity: 0,
+      opacity: instant ? finalOp : 0,
       smoothFactor: 1,
     });
     line.addTo(rippleLayer);
@@ -2338,22 +2354,22 @@ function drawRipple(src, tops, haltPct) {
       `<b>${src.name[LANG]} → ${h.c.name[LANG]}</b><br>${LANG === "ja" ? "波及損失" : "Spillover"}: ${fmtMoney(h.loss)}`,
       { sticky: true, direction: "top", className: "ripple-tip" }
     );
-    animate({
-      duration: 900, delay: 100 + 70*i, ease: "outQuart",
-      update: tt => line.setStyle({ opacity: (0.3 + 0.55 * ratio) * tt })
-    });
+    if (!instant) fadeLineIn(line, finalOp, 100 + 420 * i, 900);
     const dst = L.circleMarker([h.c.lat, h.c.lng], {
-      radius: 0, color: "#163a5f", weight: 1.4,
+      radius: instant ? 3 + 9 * ratio : 0, color: "#163a5f", weight: 1.4,
       fillColor: "#163a5f", fillOpacity: 0.75,
     }).addTo(rippleLayer);
     dst.bindTooltip(`${h.c.name[LANG]} · ${fmtMoney(h.loss)}`, { direction: "top", opacity: 1 });
-    animate({
-      duration: 700, delay: 520 + 70*i, ease: "outBack",
-      update: tt => dst.setRadius((3 + 9 * ratio) * tt)
-    });
+    if (!instant) {
+      animate({
+        duration: 700, delay: 520 + 420 * i, ease: "outBack",
+        update: tt => dst.setRadius((3 + 9 * ratio) * tt)
+      });
+      pulseAt(h.c.lat, h.c.lng, "#163a5f", 420 * i + 800, 18);
+    }
     // only label the top 3 to keep the map legible
     if (i < 3) {
-      const labelMarker = L.marker([h.c.lat, h.c.lng], {
+      L.marker([h.c.lat, h.c.lng], {
         icon: L.divIcon({
           className: "ripple-label-div",
           html: `<div class="ripple-label"><span class="rl-city">${h.c.name[LANG]}</span><span class="rl-loss">${fmtMoney(h.loss)}</span></div>`,
@@ -2423,25 +2439,25 @@ function computeHaltRipple(src, halt, days) {
   return { direct, nationalLoss, globalFin, tradeTotal, worldTotal: direct + tradeTotal + globalFin, cityRipple };
 }
 
-function runSim() {
+function runSim(withStory = false) {
   const idx = parseInt($simCity.value, 10);
   const src = CITIES[idx];
   if (!src) return;
   const halt = parseFloat($simHalt.value) / 100;
   const days = parseFloat($simDur.value);
 
-  const { direct, nationalLoss, globalFin, worldTotal, cityRipple } = computeHaltRipple(src, halt, days);
-  const share = worldTotal / WORLD_GDP_B;
+  const R = computeHaltRipple(src, halt, days);
+  const share = R.worldTotal / WORLD_GDP_B;
 
-  // --- render ---
+  // --- render result values (revealed at the story's global phase) ---
   const setV = (key, html) => { const el = $simResult.querySelector(`[data-sc="${key}"]`); if (el) el.innerHTML = html; };
-  setV("direct",   fmtGDP(direct));
-  setV("national", fmtGDP(nationalLoss));
-  setV("world",    fmtGDP(worldTotal));
-  setV("fin",      fmtGDP(globalFin));
+  setV("direct",   fmtGDP(R.direct));
+  setV("national", fmtGDP(R.nationalLoss));
+  setV("world",    fmtGDP(R.worldTotal));
+  setV("fin",      fmtGDP(R.globalFin));
   setV("share",    fmtPct(share));
 
-  const top = cityRipple.slice(0, 8);
+  const top = R.cityRipple.slice(0, 8);
   const maxLoss = top[0] ? top[0].loss : 1;
   $simRipple.innerHTML = top.length
     ? top.map(h => `
@@ -2452,20 +2468,68 @@ function runSim() {
       </li>`).join("")
     : '<li style="color:var(--ink-3);padding:8px 0;">—</li>';
 
-  $simResult.hidden = false;
-
-  // --- animate counters on the big numbers ---
-  const worldEl = $simResult.querySelector('[data-sc="world"]');
-  const directEl = $simResult.querySelector('[data-sc="direct"]');
-  animate({ duration: 900, ease: "outQuart", update: tt => worldEl.textContent = fmtGDP(worldTotal * tt) });
-  animate({ duration: 900, ease: "outQuart", update: tt => directEl.textContent = fmtGDP(direct * tt) });
-
-  // --- map visual ---
-  map.flyTo([src.lat, src.lng], Math.max(map.getZoom(), 3), { duration: 0.8 });
-  drawRipple(src, top, parseFloat($simHalt.value));
+  if (!withStory) {
+    // language re-render path: numbers only, no story restart
+    return;
+  }
+  $simResult.hidden = true;
+  startSimStory(src, scenarioMode, Math.round(halt * 100), days, { ...R, top });
 }
 
-// (the shared simulation button in panel 01 dispatches to runSim in shock modes)
+// -------------------- SHOCK-SCENARIO STORY --------------------
+const SIM_STORY_LEAD = {
+  quake:    { ja: c => `${c}近郊を大地震が直撃。`, en: c => `A major earthquake strikes near ${c}.` },
+  npp:      { ja: c => `${c}圏の原子力発電所で重大事故が発生。`, en: c => `A severe accident hits a nuclear plant serving ${c}.` },
+  port:     { ja: c => `${c}の港湾機能が封鎖された。`, en: c => `The port complex of ${c} is blockaded.` },
+  conflict: { ja: c => `${c}周辺で武力衝突が激化。`, en: c => `Armed conflict escalates around ${c}.` },
+};
+
+function startSimStory(src, modeKey, haltPct, days, R) {
+  const ja = LANG === "ja";
+  const name = src.name[LANG];
+  const lead = (SIM_STORY_LEAD[modeKey] || SIM_STORY_LEAD.quake)[LANG](name);
+  const top3 = R.top.slice(0, 3).map(h => ja
+    ? `${h.c.name[LANG]}へ ${fmtYen(h.loss)}`
+    : `${fmtUSD(h.loss)} to ${h.c.name[LANG]}`).join(ja ? "、" : ", ");
+  const share = R.worldTotal / WORLD_GDP_B;
+
+  const items = [
+    { t: "T+0", tag: "event",
+      full: ja
+        ? `${lead}都市機能の${haltPct}%が停止、復旧見込みは${days}日。`
+        : `${lead} ${haltPct}% of city function halts; recovery estimated at ${days} days.`,
+      effect: inst => {
+        showHaltMark(src, haltPct);
+        if (!inst) map.flyTo([src.lat, src.lng], Math.max(map.getZoom(), 7), { duration: 1.1 });
+      } },
+    { t: ja ? "T+24時間" : "T+24h", tag: "metro",
+      full: ja
+        ? `直接損失は ${fmtYen(R.direct)}（${fmtUSD(R.direct)}）。国全体では ${fmtYen(R.nationalLoss)} まで膨らむ見込み。`
+        : `Direct loss: ${fmtUSD(R.direct)} (${fmtYen(R.direct)}). Nationally it swells toward ${fmtUSD(R.nationalLoss)}.`,
+      effect: inst => { if (!inst) pulseAt(src.lat, src.lng, "#a8231f", 300, 30); } },
+    { t: ja ? "T+72時間" : "T+72h", tag: "cascade",
+      full: ja
+        ? `貿易と金融の糸が世界中で引き攣れる——波及上位: ${top3}。`
+        : `The threads of trade and finance snap taut worldwide — top spillovers: ${top3}.`,
+      effect: inst => {
+        drawRippleArcs(src, R.top, inst);
+        if (!inst) focusStage([[src.lat, src.lng], ...R.top.map(h => [h.c.lat, h.c.lng])], 5);
+      } },
+    { t: ja ? "T+2週間" : "T+2wk", tag: "global",
+      full: ja
+        ? `世界GDP損失は合計 ${fmtYen(R.worldTotal)}（${fmtUSD(R.worldTotal)}）——年GDP比 ${fmtPct(share)}。うち金融ハブ連鎖が ${fmtYen(R.globalFin)} を上乗せした。`
+        : `World GDP loss totals ${fmtUSD(R.worldTotal)} (${fmtYen(R.worldTotal)}) — ${fmtPct(share)} of annual GDP. The finance-hub channel adds ${fmtUSD(R.globalFin)}.`,
+      effect: inst => {
+        $simResult.hidden = false;
+        if (!inst) {
+          worldPulse({ lat: src.lat, lng: src.lng });
+          map.flyTo([25, src.lng], 2, { duration: 1.4 });
+        }
+      } },
+  ].map(x => ({ ...x, el: null, typed: false, staged: false }));
+
+  runBarStory(items, `SIM · ${name}`, [src.lat, src.lng]);
+}
 
 // initial language apply (in case of EN query or first render)
 applyLang();
