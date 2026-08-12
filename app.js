@@ -1370,10 +1370,7 @@ function drawAssetDeps(hit, layer, instant = false) {
       { sticky: true, direction: "top", className: "ripple-tip" }
     );
     if (!instant) {
-      animate({
-        duration: 1100, delay: 650 * i, ease: "outQuart",
-        update: tt => line.setStyle({ opacity: finalOp * tt })
-      });
+      fadeLineIn(line, finalOp, 650 * i, 1100);
       pulseAt(x.tgt.lat, x.tgt.lng, color, 650 * i + 900, 22);
     }
   });
@@ -1714,6 +1711,19 @@ function focusStage(latlngs, maxZoom) {
   }
 }
 
+// Time-based line fade — unlike rAF, this still completes when the browser
+// throttles background rendering, so arcs can never be stuck invisible.
+function fadeLineIn(line, finalOp, delay, dur = 1000) {
+  const start = performance.now() + delay;
+  const iv = setInterval(() => {
+    const tt = (performance.now() - start) / dur;
+    if (tt < 0) return;
+    const k = Math.min(1, tt);
+    try { line.setStyle({ opacity: finalOp * (1 - Math.pow(1 - k, 3)) }); } catch (e) {}
+    if (k >= 1) clearInterval(iv);
+  }, 80);
+}
+
 // Solid navy arcs from the struck metro to its trade/finance dependents —
 // the "world on strings" web, persistent on the detonation layer.
 function drawTradeWeb(det, layer, instant) {
@@ -1735,7 +1745,7 @@ function drawTradeWeb(det, layer, instant) {
       { sticky: true, direction: "top", className: "ripple-tip" }
     );
     if (!instant) {
-      animate({ duration: 1000, delay: 420 * i, ease: "outQuart", update: tt => line.setStyle({ opacity: finalOp * tt }) });
+      fadeLineIn(line, finalOp, 420 * i);
       pulseAt(h.c.lat, h.c.lng, "#163a5f", 420 * i + 800, 18);
     }
   });
