@@ -2124,3 +2124,53 @@ body.sat-basemap .leaflet-control-attribution {
   border: 1px dashed var(--rule);
   background: var(--bg);
 }
+
+/* =================== RECON SATELLITE VIEW =================== */
+.recon-box {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--rule);
+  background: #0c1116;
+  overflow: hidden;
+}
+.recon-map { position: absolute; inset: 0; }
+.recon-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 500;
+  box-shadow: inset 0 0 34px rgba(0, 0, 0, 0.35);
+}
+.recon-cross {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 26px; height: 26px;
+  transform: translate(-50%, -50%);
+}
+.recon-cross::before, .recon-cross::after {
+  content: "";
+  position: absolute;
+  background: rgba(255, 255, 255, 0.75);
+}
+.recon-cross::before { left: 50%; top: 0; width: 1px; height: 100%; }
+.recon-cross::after { top: 50%; left: 0; height: 1px; width: 100%; }
+.recon-corner {
+  position: absolute;
+  width: 12px; height: 12px;
+  border: 0 solid rgba(255, 255, 255, 0.65);
+}
+.rc-tl { top: 6px; left: 6px; border-top-width: 1.5px; border-left-width: 1.5px; }
+.rc-tr { top: 6px; right: 6px; border-top-width: 1.5px; border-right-width: 1.5px; }
+.rc-bl { bottom: 6px; left: 6px; border-bottom-width: 1.5px; border-left-width: 1.5px; }
+.rc-br { bottom: 6px; right: 6px; border-bottom-width: 1.5px; border-right-width: 1.5px; }
+.recon-tag {
+  position: absolute;
+  left: 8px; bottom: 6px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+.recon-box .leaflet-container { background: #0c1116; }
+.sb-media .recon-box { height: 100%; aspect-ratio: auto; }

@@ -75,10 +75,9 @@ const I18N = {
     a_src:         "出典",
     a_note:        "全損時損失 = 年間フロー額 × 途絶期間。被弾時は被害リングとの重なりから損傷率を乗算。",
     a_btn:         "この拠点に起爆",
-    sv_head:       "現地の光景 — Street View",
+    sv_head:       "現地の光景 — 偵察衛星ビュー",
     sv_open:       "Googleマップで開く",
-    target_sv_head:"標的の現況 — Street View",
-    sv_none:       "海上のため現地映像はありません。",
+    target_sv_head:"標的の現況 — 偵察衛星ビュー",
     cum_stock:     "ストック蒸発(都市GDP)",
     cum_flow:      "フロー遮断(供給網)",
     r_assets:      "被弾インフラ",
@@ -236,10 +235,9 @@ const I18N = {
     a_src:         "Sources",
     a_note:        "Full loss = annual flow × outage duration. On a strike, scaled by the damage fraction from ring overlap.",
     a_btn:         "Detonate at this site",
-    sv_head:       "Street level — Street View",
+    sv_head:       "Site view — recon satellite",
     sv_open:       "Open in Google Maps",
-    target_sv_head:"Target now — Street View",
-    sv_none:       "No street imagery at sea.",
+    target_sv_head:"Target now — recon satellite",
     cum_stock:     "Stock vaporized (metro GDP)",
     cum_flow:      "Flow severed (supply chains)",
     r_assets:      "Infrastructure struck",
@@ -1540,6 +1538,7 @@ function tallyAnimateTo(tgt, dur = 1800) {
 function hideStoryBar() {
   if ($storyBar) $storyBar.hidden = true;
   $storyBar?.classList.remove("sb-typing");
+  destroyRecon("story");
   const sbMedia = document.getElementById("sb-media");
   if (sbMedia) { sbMedia.innerHTML = ""; sbMedia.hidden = true; }
   document.getElementById("map-wrap")?.classList.remove("story-active");
@@ -1605,12 +1604,13 @@ function startStory(det, container) {
     $sbStrike.textContent = `#${String(det.id).padStart(2, "0")} · ${placeLabel(det.cityMatch)}`;
     $sbText.textContent = "";
     document.getElementById("map-wrap")?.classList.add("story-active");
-    // street-level view of ground zero — "this is what was there"
+    // recon close-up of ground zero — "this is what is there"
     const sbMedia = document.getElementById("sb-media");
     if (sbMedia) {
       if (!window.NGRM_OFFLINE) {
-        sbMedia.innerHTML = `<iframe class="sv-frame" referrerpolicy="no-referrer-when-downgrade" src="${svEmbedURL(det.pt.lat, det.pt.lng)}"></iframe>`;
+        sbMedia.innerHTML = reconHTML("story", det.pt.lat, det.pt.lng);
         sbMedia.hidden = false;
+        initRecon("story", det.pt.lat, det.pt.lng, 13);
       } else {
         sbMedia.hidden = true;
       }
@@ -1857,42 +1857,93 @@ function showCity(c) {
       <dt>${t("r_total_gdp")}</dt><dd><strong>${fmtGDP(gdpExp)}</strong></dd>
       <dt>${t("r_total_pop")}</dt><dd><strong>${fmtPop(popExp)}</strong></dd>
     </dl>
-    ${streetViewHTML(c.lat, c.lng)}
+    ${reconSectionHTML("sv_head", "city", c.lat, c.lng)}
     <p class="hint small" style="margin-top:10px;">${t("c_note")}</p>
     <button class="ghost" id="city-detonate" style="margin-top:10px;">
       <span class="pdot"></span><span>${t("c_btn")}</span>
     </button>
   `;
   $cityInfo.hidden = false;
+  initRecon("city", c.lat, c.lng, 12);
   document.getElementById("city-detonate")?.addEventListener("click", () => {
     detonate({ lat: c.lat, lng: c.lng });
   });
 }
 
-// -------------------- STREET VIEW --------------------
-// Keyless Google Street View embed (legacy svembed endpoint) + the official
-// no-key Maps URL as an open-in-new-tab fallback. Hidden in the offline
-// artifact build, where the CSP blocks external iframes.
-function svEmbedURL(lat, lng) {
-  return `https://maps.google.com/maps?layer=c&cbll=${lat},${lng}&cbp=11,0,0,0,0&output=svembed&hl=${LANG}`;
+// -------------------- RECON VIEW (偵察衛星ビュー) --------------------
+// Close-up satellite mini-map with a slow Ken Burns drift — reads like
+// reconnaissance footage of the target. Replaces the Street View embeds:
+// works for every site including open-sea chokepoints, uses the imagery
+// tiles we already rely on, and needs no API key.
+const reconMaps = {};
+function destroyRecon(key) {
+  const r = reconMaps[key];
+  if (!r) return;
+  clearInterval(r.drift);
+  try { r.map.remove(); } catch (e) {}
+  delete reconMaps[key];
 }
 function svOpenURL(lat, lng) {
-  return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
+  return `https://www.google.com/maps/@?api=1&map_action=map&center=${lat},${lng}&zoom=15&basemap=satellite`;
 }
-function streetViewHTML(lat, lng, linkOnly = false) {
+function fmtCoordTag(lat, lng) {
+  return `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "N" : "S"} ${Math.abs(lng).toFixed(2)}°${lng >= 0 ? "E" : "W"}`;
+}
+function reconHTML(key, lat, lng) {
   if (window.NGRM_OFFLINE) return "";
-  const open = `<a class="sv-open" href="${svOpenURL(lat, lng)}" target="_blank" rel="noopener">${t("sv_open")} ↗</a>`;
-  if (linkOnly) {
-    return `<hr class="rule"><div class="sv-headline">${t("sv_head")}</div><div class="sv-linkonly">${open}</div>`;
-  }
   return `
-    <hr class="rule">
-    <div class="sv-headline">${t("sv_head")}</div>
-    <div class="sv-box">
-      <iframe class="sv-frame" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
-              src="${svEmbedURL(lat, lng)}" allowfullscreen></iframe>
-    </div>
-    ${open}`;
+    <div class="recon-box">
+      <div class="recon-map" id="recon-map-${key}"></div>
+      <div class="recon-overlay" aria-hidden="true">
+        <span class="recon-cross"></span>
+        <span class="recon-corner rc-tl"></span><span class="recon-corner rc-tr"></span>
+        <span class="recon-corner rc-bl"></span><span class="recon-corner rc-br"></span>
+        <span class="recon-tag">RECON · ${fmtCoordTag(lat, lng)}</span>
+      </div>
+    </div>`;
+}
+function initRecon(key, lat, lng, zoom = 14) {
+  if (window.NGRM_OFFLINE) return;
+  destroyRecon(key);
+  const el = document.getElementById("recon-map-" + key);
+  if (!el) return;
+  const m = L.map(el, {
+    zoomControl: false, attributionControl: false, dragging: false,
+    scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false,
+    keyboard: false, touchZoom: false, zoomSnap: 0,
+  }).setView([lat, lng], zoom);
+  L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    { maxZoom: 18 }
+  ).addTo(m);
+  setTimeout(() => { try { m.invalidateSize(); } catch (e) {} }, 60);
+  // slow drift + gentle push-in; direction is deterministic per site
+  const t0 = performance.now();
+  const ang = ((lat * 7 + lng * 13) % 360) * Math.PI / 180;
+  const span = 180 / Math.pow(2, zoom) * ((el.clientHeight || 170) / 256);
+  const spd = span * 0.01;
+  const drift = setInterval(() => {
+    const tt = (performance.now() - t0) / 1000;
+    if (tt > 40 || !el.isConnected) { clearInterval(drift); return; }
+    m.setView(
+      [lat + Math.sin(ang) * spd * tt, lng + Math.cos(ang) * spd * tt],
+      zoom + Math.min(0.5, tt * 0.02),
+      { animate: false }
+    );
+  }, 90);
+  reconMaps[key] = { map: m, drift };
+}
+// category-tuned zoom: fields and straits are huge, factory clusters are tight
+const RECON_ZOOM = { port: 14, factory: 15, energy: 13, choke: 11 };
+function reconZoomFor(sel) {
+  if (sel.startsWith("c:")) return 12;
+  const a = ASSETS[+sel.slice(2)];
+  return (a && RECON_ZOOM[a.cat]) || 14;
+}
+function reconSectionHTML(headKey, key, lat, lng) {
+  if (window.NGRM_OFFLINE) return "";
+  return `<hr class="rule"><div class="sv-headline">${t(headKey)}</div>${reconHTML(key, lat, lng)}
+    <a class="sv-open" href="${svOpenURL(lat, lng)}" target="_blank" rel="noopener">${t("sv_open")} ↗</a>`;
 }
 
 // -------------------- ASSET PANEL --------------------
@@ -1929,13 +1980,14 @@ function showAsset(a) {
       <dt>${t("a_loss1")}</dt><dd><strong>${fmtMoney(fullLoss)}</strong></dd>
     </dl>
     ${deps.length ? `<hr class="rule"><div class="ripple-heading">${t("a_deps")}</div><ul class="hits">${depHtml}</ul>` : ""}
-    ${streetViewHTML(a.lat, a.lng, a.cat === "choke")}
+    ${reconSectionHTML("sv_head", "asset", a.lat, a.lng)}
     <p class="hint small" style="margin-top:10px;">${t("a_note")} ${t("a_src")}: ${a.src_note}.</p>
     <button class="ghost" id="asset-detonate" style="margin-top:10px;">
       <span class="pdot"></span><span>${t("a_btn")}</span>
     </button>
   `;
   $assetInfo.hidden = false;
+  initRecon("asset", a.lat, a.lng, RECON_ZOOM[a.cat] || 14);
   document.getElementById("asset-detonate")?.addEventListener("click", () => {
     detonate({ lat: a.lat, lng: a.lng });
   });
@@ -2026,14 +2078,12 @@ function updateTargetPreview() {
   if (window.NGRM_OFFLINE) { box.hidden = true; return; }
   const tgt = targetLatLng();
   if (!tgt) { box.hidden = true; return; }
-  const v = $targetCity.value;
-  const isChoke = v.startsWith("a:") && ASSETS[+v.slice(2)] && ASSETS[+v.slice(2)].cat === "choke";
-  const open = `<a class="sv-open" href="${svOpenURL(tgt.lat, tgt.lng)}" target="_blank" rel="noopener">${t("sv_open")} ↗</a>`;
-  box.innerHTML = isChoke
-    ? `<div class="sv-headline">${t("target_sv_head")}</div><div class="sv-none">${t("sv_none")}</div>${open}`
-    : `<div class="sv-headline">${t("target_sv_head")}</div>
-       <div class="sv-box"><iframe class="sv-frame" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="${svEmbedURL(tgt.lat, tgt.lng)}"></iframe></div>${open}`;
+  box.innerHTML = `
+    <div class="sv-headline">${t("target_sv_head")}</div>
+    ${reconHTML("target", tgt.lat, tgt.lng)}
+    <a class="sv-open" href="${svOpenURL(tgt.lat, tgt.lng)}" target="_blank" rel="noopener">${t("sv_open")} ↗</a>`;
   box.hidden = false;
+  initRecon("target", tgt.lat, tgt.lng, reconZoomFor($targetCity.value));
 }
 
 $targetCity?.addEventListener("change", () => {
