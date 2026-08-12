@@ -28,9 +28,10 @@ const I18N = {
     scenario:      "シナリオ",
     yield_label:   "弾頭出力",
     burst_label:   "爆発方式",
-    target_label:  "標的都市",
-    fire_btn:      "起爆する",
-    hint_click:    "地図上の任意の点を直接クリックしても起爆できる。都市バブル・戦略資産マーカーをクリックすると詳細を表示。",
+    target_label:  "標的",
+    fire_btn:      "シミュレーション実行",
+    target_group_city: "都市(GDP上位40)",
+    hint_click:    "標的は都市40+戦略資産55から選択。地図上のマーカーをクリックしても標的に設定できる。",
     clear_btn:     "すべてリセット",
 
     result:        "累積被害",
@@ -101,7 +102,7 @@ const I18N = {
 
     // fig / legend
     fig_label_idle: "入力待ち",
-    fig_body_idle:  "「01 シナリオ」で弾頭と標的都市を選び「起爆する」——または地図上の任意の点をクリック。世界GDP上位40都市(ストック)と戦略資産約55拠点(フロー)への被害を二層で計算し、起爆後は地図下部に実況が流れます。",
+    fig_body_idle:  "「01 シナリオ」で弾頭と標的(都市または戦略資産)を選び「シミュレーション実行」。被害を二層(ストック+フロー)で計算し、起爆後は地図下部に実況が流れ、カメラが被害の広がりを追います。",
     legend_title:   "被害リング",
     legend_severe:  "5 psi · 深刻な構造破壊",
     legend_thermal: "3度熱傷",
@@ -141,8 +142,8 @@ const I18N = {
     guide_steps: [
       { t: "弾頭を設定する",
         b: "左パネル「01 シナリオ」で弾頭出力(15 kt〜25 Mt)と爆発方式を選ぶ。" },
-      { t: "起爆する",
-        b: "「01 シナリオ」の「起爆する」ボタン——または地図の任意地点をクリック。被害リングと爆心マークはリセットまで何発でも積み上がる。" },
+      { t: "シミュレーション実行",
+        b: "「01 シナリオ」で標的を選んで実行。地図のマーカーをクリックして標的に設定もできる。被害リングと爆心マークはリセットまで何発でも積み上がる。" },
       { t: "マーカーをクリックで詳細",
         b: "赤い円 = 都市GDPバブル。丸いバッジのピクトグラム = 戦略資産——錨は港湾・物流、工場マークは製造クラスタ、雫はエネルギー・資源、船は海上チョークポイント。クリックすると詳細パネルと「この拠点に起爆」ボタン。" },
       { t: "二層の損失を読む",
@@ -180,9 +181,10 @@ const I18N = {
     scenario:      "Scenario",
     yield_label:   "Warhead yield",
     burst_label:   "Burst type",
-    target_label:  "Target metro",
-    fire_btn:      "DETONATE",
-    hint_click:    "You can also strike any point by clicking the map directly. Click a metro bubble or asset marker for its profile.",
+    target_label:  "Target",
+    fire_btn:      "Run simulation",
+    target_group_city: "Metros (top-40 GDP)",
+    hint_click:    "Pick from 40 metros + 55 strategic assets. Clicking a marker on the map also sets it as the target.",
     clear_btn:     "Reset all",
 
     result:        "Cumulative damage",
@@ -252,7 +254,7 @@ const I18N = {
     src:           'Metro GDP: <span class="term" data-def-ja="Brookings Institution と JPMorgan Chase が共同で発行する、都市GDP・生産性の国際比較データセット。" data-def-en="International dataset of metro-level GDP and productivity, jointly published by Brookings Institution and JPMorgan Chase.">Brookings Global Metro Monitor</span> / Oxford Economics (indicative, 2022–2023). Blast radii: <span class="term" data-def-ja="1977年版『The Effects of Nuclear Weapons』。核兵器効果の標準参考書。本ツールの爆発半径スケーリングもここに基づく。" data-def-en="Glasstone &amp; Dolan (1977), ‘The Effects of Nuclear Weapons’ — standard reference; the blast scaling in this tool follows its airburst tables.">Glasstone &amp; Dolan (1977)</span>. Strategic assets: UNCTAD / Lloyd\'s List, company reports, EIA/JODI, USGS (all indicative).',
 
     fig_label_idle: "Awaiting input",
-    fig_body_idle:  "Pick a warhead and target metro in panel 01 and hit DETONATE — or click any point on the map. Damage is computed on two tiers (metro stock + strategic-asset flow) and the live commentary plays along the bottom of the map.",
+    fig_body_idle:  "Pick a warhead and target (metro or strategic asset) in panel 01 and run the simulation. Damage is computed on two tiers (stock + flow); live commentary plays along the bottom of the map while the camera follows the spread.",
     legend_title:   "Damage rings",
     legend_severe:  "5 psi · severe structural damage",
     legend_thermal: "3rd-degree burns",
@@ -289,8 +291,8 @@ const I18N = {
     guide_steps: [
       { t: "Set the warhead",
         b: "In panel 01, choose a yield (15 kt – 25 Mt) and burst type." },
-      { t: "Detonate",
-        b: "Use the DETONATE button in panel 01 — or click any point on the map. Damage rings and epicenter marks accumulate until you reset." },
+      { t: "Run the simulation",
+        b: "Pick a target in panel 01 and run. Clicking any marker on the map also sets it as the target. Damage rings and epicenter marks accumulate until you reset." },
       { t: "Click markers for detail",
         b: "Red circles = metro GDP bubbles. Round pictogram badges = strategic assets — anchor for ports & logistics, factory for manufacturing, droplet for energy & resources, ship for maritime chokepoints. Each opens a detail panel with a “detonate here” button." },
       { t: "Read the two-tier loss",
@@ -347,6 +349,7 @@ function applyLang() {
   if (lastCity) showCity(lastCity);
   if (typeof lastAsset !== "undefined" && lastAsset) showAsset(lastAsset);
   if (guideModal && !guideModal.hidden) renderGuide();
+  if (typeof populateTargets === "function") populateTargets(); // rebuild optgroup labels in the new language
   if (typeof cityLayer !== "undefined" && cityLayer) cityLayer.eachLayer(l => l.setTooltipContent ? l.setTooltipContent(l._cityRef.name[LANG]) : null);
   // re-render hazard divIcons in the new language
   if (typeof allDetonations !== "undefined") {
@@ -593,8 +596,8 @@ const map = L.map("map", {
 }).setView([30, 15], 2);
 function invalidateMap() { setTimeout(() => map.invalidateSize(), 50); }
 
-// Basemap: CARTO tiles normally; a bundled vector world (WORLD_GEOJSON) in the
-// self-contained/offline build, where the CSP blocks external tile requests.
+// Basemap: satellite imagery online; a bundled vector world (WORLD_GEOJSON)
+// in the self-contained/offline build, where the CSP blocks tile requests.
 if (window.NGRM_OFFLINE && window.WORLD_GEOJSON) {
   document.getElementById("map").style.background = "#dbe2e6";
   L.geoJSON(window.WORLD_GEOJSON, {
@@ -605,13 +608,15 @@ if (window.NGRM_OFFLINE && window.WORLD_GEOJSON) {
     interactive: false,
   }).addTo(map);
 } else {
+  document.body.classList.add("sat-basemap");
+  document.getElementById("map").style.background = "#0c1116";
   L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
-    { attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: "abcd", maxZoom: 19 }
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    { attribution: 'Imagery &copy; Esri &amp; contributors', maxZoom: 18 }
   ).addTo(map);
   L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png",
-    { subdomains: "abcd", maxZoom: 19, pane: "shadowPane", opacity: 0.9 }
+    "https://{s}.basemaps.cartocdn.com/rastertiles/dark_only_labels/{z}/{x}/{y}{r}.png",
+    { attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: "abcd", maxZoom: 19, pane: "shadowPane", opacity: 0.95 }
   ).addTo(map);
 }
 
@@ -639,6 +644,8 @@ function renderCities() {
       showCity(c);
       const simSel = document.getElementById("sim-city");
       if (simSel) simSel.value = CITIES.indexOf(c);
+      const tgtSel = document.getElementById("target-city");
+      if (tgtSel) tgtSel.value = "c:" + CITIES.indexOf(c);
       map.flyTo([c.lat, c.lng], Math.max(map.getZoom(), 4), { duration: 0.7 });
     });
     cityLayer.addLayer(m);
@@ -738,6 +745,8 @@ function renderAssets() {
     m.on("click", e => {
       L.DomEvent.stopPropagation(e);
       showAsset(a);
+      const tgtSel = document.getElementById("target-city");
+      if (tgtSel) tgtSel.value = "a:" + ASSETS.indexOf(a);
       map.flyTo([a.lat, a.lng], Math.max(map.getZoom(), 4), { duration: 0.7 });
     });
     assetLayers[a.cat].addLayer(m);
@@ -1212,15 +1221,17 @@ function detonate(pt, opts = {}) {
   cumulative.gdpB  += totalGDP;
   cumulative.flowB += totalFlow;
   cumulative.pop   += totalPop;
+  // absolute tally snapshot for this strike — the story phases animate the
+  // displayed counters toward it, and fast-forward lands exactly on it
+  det.snap = { gdpB: cumulative.gdpB, flowB: cumulative.flowB, pop: cumulative.pop, count: cumulative.count };
 
   $legend.hidden = false;
   renderCumulative(det, true);
 }
 
-map.on("click", e => {
-  if (e.originalEvent && e.originalEvent.target && e.originalEvent.target.closest(".leaflet-interactive") && e.originalEvent._handled) return;
-  detonate(e.latlng);
-});
+// Free-form map-click detonation removed: strikes on empty terrain read as
+// ¥0 non-events. Targets are chosen in panel 01 (or by clicking a marker,
+// which sets the selector) and fired with the simulation button.
 
 // -------------------- RESULT / HITS --------------------
 function computeHitsFor(pt, kt, burst) {
@@ -1420,6 +1431,56 @@ const $sbT      = document.getElementById("sb-t");
 const $sbText   = document.getElementById("sb-text");
 const $sbStrike = document.getElementById("sb-strike");
 
+// -------------------- LIVE TALLY --------------------
+// The cumulative counters climb in sync with the story: impact bumps the
+// strike count, the metro phase books the stock, the infra phase books the
+// flow. `display` always holds what is currently painted on screen.
+function tallyEls() {
+  return {
+    big:   $resultBody.querySelector('[data-cm="big"]'),
+    sub:   $resultBody.querySelector('[data-cm="sub"]'),
+    stock: $resultBody.querySelector('[data-cm="stock"]'),
+    flow:  $resultBody.querySelector('[data-cm="flow"]'),
+    count: $resultBody.querySelector('[data-cm="count"]'),
+    pop:   $resultBody.querySelector('[data-cm="pop"]'),
+    share: $resultBody.querySelector('[data-cm="share"]'),
+  };
+}
+function writeTally(g, f, p, c) {
+  const e = tallyEls();
+  if (!e.big) return;
+  e.big.textContent   = fmtMoney(g + f);
+  e.sub.textContent   = "≈ " + fmtMoneyAlt(g + f);
+  e.stock.textContent = fmtMoney(g);
+  e.flow.textContent  = fmtMoney(f);
+  e.pop.textContent   = fmtPop(p);
+  e.share.textContent = fmtPct((g + f) / WORLD_GDP_B);
+  if (c != null && e.count) e.count.textContent = c + " " + t("narr_detonations");
+}
+function setTallyDisplay(snap) {
+  display.gdpB = snap.gdpB; display.flowB = snap.flowB; display.pop = snap.pop;
+  writeTally(snap.gdpB, snap.flowB, snap.pop, snap.count);
+}
+function tallyAnimateTo(tgt, dur = 1800) {
+  const from = { g: display.gdpB, f: display.flowB, p: display.pop };
+  const to = {
+    g: tgt.gdpB  != null ? tgt.gdpB  : from.g,
+    f: tgt.flowB != null ? tgt.flowB : from.f,
+    p: tgt.pop   != null ? tgt.pop   : from.p,
+  };
+  const start = performance.now();
+  const iv = setInterval(() => {
+    const tt = Math.min(1, (performance.now() - start) / dur);
+    const k = 1 - Math.pow(1 - tt, 3);
+    display.gdpB  = from.g + (to.g - from.g) * k;
+    display.flowB = from.f + (to.f - from.f) * k;
+    display.pop   = from.p + (to.p - from.p) * k;
+    writeTally(display.gdpB, display.flowB, display.pop, null);
+    if (tt >= 1) clearInterval(iv);
+  }, 66);
+  storyTypers.push(iv);
+}
+
 function hideStoryBar() {
   if ($storyBar) $storyBar.hidden = true;
   $storyBar?.classList.remove("sb-typing");
@@ -1440,6 +1501,7 @@ function cancelStory(finalize) {
       }
       if (!p.staged) runStageEffect(p.tag, storyDet, true);
     });
+    if (storyDet.snap) setTallyDisplay(storyDet.snap); // land counters exactly on this strike's totals
   }
   storyPending = [];
   storyDet = null;
@@ -1541,20 +1603,52 @@ function worldPulse(pt) {
   mk(900, 4200, 7500000, 0.28);
 }
 
+// Live camera: fly to where the current phase is spreading.
+function focusStage(latlngs, maxZoom) {
+  if (!latlngs || !latlngs.length) return;
+  if (latlngs.length === 1) {
+    map.flyTo(latlngs[0], Math.max(map.getZoom(), maxZoom), { duration: 1.1 });
+  } else {
+    map.flyToBounds(L.latLngBounds(latlngs).pad(0.3), { duration: 1.2, maxZoom });
+  }
+}
+
 function runStageEffect(tag, det, instant) {
   // only the dependency arcs are persistent — when fast-forwarding, draw
-  // them immediately and skip the transient pulses.
+  // them immediately and skip the transient pulses / camera moves.
   if (tag === "cascade") {
-    if (det.assetHits && det.assetHits.length) drawAssetDeps(det.assetHits[0], det.layer, instant);
+    if (det.assetHits && det.assetHits.length) {
+      drawAssetDeps(det.assetHits[0], det.layer, instant);
+      if (!instant) {
+        const a = det.assetHits[0].a;
+        const pts = [[a.lat, a.lng]];
+        Object.keys(a.deps || {}).forEach(cc => { const tt = depTarget(cc); if (tt) pts.push([tt.lat, tt.lng]); });
+        focusStage(pts, 5);
+      }
+    }
     return;
   }
   if (instant) return;
-  if (tag === "metro" || tag === "survey") {
-    (det.hits || []).slice(0, 4).forEach((h, i) => pulseAt(h.c.lat, h.c.lng, "#a8231f", i * 380));
+  if (tag === "impact") {
+    // exact zoom sized to the light-damage ring so the rings fill the view
+    const r = blastRadii(det.kt, det.burst);
+    const z = Math.max(4, Math.min(10, Math.round(13 - Math.log2(r.moderate))));
+    map.flyTo([det.pt.lat, det.pt.lng], z, { duration: 1.1 });
+    if (det.snap) writeTally(display.gdpB, display.flowB, display.pop, det.snap.count);
+  } else if (tag === "metro" || tag === "survey") {
+    const hits = (det.hits || []).slice(0, 4);
+    focusStage([[det.pt.lat, det.pt.lng], ...hits.map(h => [h.c.lat, h.c.lng])], 7);
+    hits.forEach((h, i) => pulseAt(h.c.lat, h.c.lng, "#a8231f", 900 + i * 380));
+    if (tag === "metro" && det.snap) tallyAnimateTo({ gdpB: det.snap.gdpB, pop: det.snap.pop });
   } else if (tag === "infra") {
-    (det.assetHits || []).slice(0, 3).forEach((h, i) => pulseAt(h.a.lat, h.a.lng, ASSET_CAT_COLOR[h.a.cat], i * 380, 28));
+    const hits = (det.assetHits || []).slice(0, 3);
+    focusStage([[det.pt.lat, det.pt.lng], ...hits.map(h => [h.a.lat, h.a.lng])], 8);
+    hits.forEach((h, i) => pulseAt(h.a.lat, h.a.lng, ASSET_CAT_COLOR[h.a.cat], 900 + i * 380, 28));
+    if (det.snap) tallyAnimateTo({ flowB: det.snap.flowB });
   } else if (tag === "global") {
-    worldPulse(det.pt);
+    map.flyTo([25, det.pt.lng], 2, { duration: 1.4 });
+    setTimeout(() => { if (storyDet === det) worldPulse(det.pt); }, 1000);
+    if (det.snap) tallyAnimateTo({ gdpB: det.snap.gdpB, flowB: det.snap.flowB, pop: det.snap.pop }, 1200);
   }
 }
 
@@ -1649,47 +1743,11 @@ function renderCumulative(latestDet, freshStrike = false) {
     }
   }
 
-  // animate big numbers from previous displayed state → current cumulative
-  const bigEl   = $resultBody.querySelector('[data-cm="big"]');
-  const subEl   = $resultBody.querySelector('[data-cm="sub"]');
-  const stockEl = $resultBody.querySelector('[data-cm="stock"]');
-  const flowEl  = $resultBody.querySelector('[data-cm="flow"]');
-  const countEl = $resultBody.querySelector('[data-cm="count"]');
-  const popEl   = $resultBody.querySelector('[data-cm="pop"]');
-  const shareEl = $resultBody.querySelector('[data-cm="share"]');
-
-  const fromGdp = display.gdpB, toGdp = cumulative.gdpB;
-  const fromFlw = display.flowB, toFlw = cumulative.flowB;
-  const fromPop = display.pop,  toPop = cumulative.pop;
-  const fromShr = display.share, toShr = share;
-  const fromCnt = Math.max(0, cumulative.count - 1), toCnt = cumulative.count;
-
-  animate({
-    duration: 1200, ease: "outQuart",
-    update: tt => {
-      const g = fromGdp + (toGdp - fromGdp) * tt;
-      const f = fromFlw + (toFlw - fromFlw) * tt;
-      bigEl.textContent = fmtMoney(g + f);
-      subEl.textContent = "≈ " + fmtMoneyAlt(g + f);
-      stockEl.textContent = fmtMoney(g);
-      flowEl.textContent  = fmtMoney(f);
-    },
-    done: () => { display.gdpB = toGdp; display.flowB = toFlw; }
-  });
-  animate({
-    duration: 1200, ease: "outQuart",
-    update: tt => { popEl.textContent = fmtPop(fromPop + (toPop - fromPop) * tt); },
-    done: () => { display.pop = toPop; }
-  });
-  animate({
-    duration: 1200, ease: "outQuart",
-    update: tt => { shareEl.textContent = fmtPct(fromShr + (toShr - fromShr) * tt); },
-    done: () => { display.share = toShr; }
-  });
-  animate({
-    duration: 900, ease: "outQuart",
-    update: tt => { countEl.textContent = Math.round(fromCnt + (toCnt - fromCnt) * tt) + " " + t("narr_detonations"); }
-  });
+  // Counters do NOT jump to the new totals here — the story phases drive
+  // them up live (impact → count, metro → stock, infra → flow). We only
+  // paint the current displayed state as the baseline.
+  writeTally(display.gdpB, display.flowB, display.pop,
+             freshStrike ? Math.max(0, cumulative.count - 1) : cumulative.count);
 
   // figcaption
   if (latestDet) {
@@ -1806,31 +1864,69 @@ document.getElementById("layer-gdp").addEventListener("change", e => {
   });
 });
 
-// -------------------- FIRE BUTTON (panel 01) --------------------
+// -------------------- SIMULATION BUTTON (panel 01) --------------------
+// Single entry point: the target (metro or strategic asset) is chosen in the
+// selector, then the run button fires. Marker clicks pre-set the selector.
 const $targetCity = document.getElementById("target-city");
-function populateTargetCity() {
+
+function populateTargets() {
   if (!$targetCity) return;
+  const prev = $targetCity.value;
   $targetCity.innerHTML = "";
+
+  const ogCity = document.createElement("optgroup");
+  ogCity.label = t("target_group_city");
   [...CITIES]
     .map((c, i) => ({ c, i }))
-    .sort((a, b) => b.c.gdp - a.c.gdp)
+    .sort((x, y) => y.c.gdp - x.c.gdp)
     .forEach(({ c, i }) => {
       const opt = document.createElement("option");
-      opt.value = i;
+      opt.value = "c:" + i;
       opt.setAttribute("data-ja", c.name.ja);
       opt.setAttribute("data-en", c.name.en);
       opt.textContent = c.name[LANG];
       if (c.name.en === "Tokyo") opt.selected = true;
-      $targetCity.appendChild(opt);
+      ogCity.appendChild(opt);
     });
+  $targetCity.appendChild(ogCity);
+
+  ["port", "factory", "energy", "choke"].forEach(cat => {
+    const og = document.createElement("optgroup");
+    og.label = t("cat_" + cat);
+    ASSETS
+      .map((a, i) => ({ a, i }))
+      .filter(({ a }) => a.cat === cat)
+      .sort((x, y) => y.a.flow_busd - x.a.flow_busd)
+      .forEach(({ a, i }) => {
+        const opt = document.createElement("option");
+        opt.value = "a:" + i;
+        opt.setAttribute("data-ja", a.name_ja);
+        opt.setAttribute("data-en", a.name_en);
+        opt.textContent = aname(a);
+        og.appendChild(opt);
+      });
+    $targetCity.appendChild(og);
+  });
+
+  if (prev) {
+    $targetCity.value = prev;
+    if ($targetCity.selectedIndex < 0) $targetCity.selectedIndex = 0;
+  }
 }
-populateTargetCity();
+populateTargets();
+
+function targetLatLng() {
+  const v = $targetCity ? $targetCity.value : "";
+  if (v.startsWith("c:")) { const c = CITIES[+v.slice(2)]; return c && { lat: c.lat, lng: c.lng }; }
+  if (v.startsWith("a:")) { const a = ASSETS[+v.slice(2)]; return a && { lat: a.lat, lng: a.lng }; }
+  return null;
+}
 
 document.getElementById("fire-btn")?.addEventListener("click", () => {
-  const c = CITIES[parseInt($targetCity.value, 10)];
-  if (!c) return;
-  map.flyTo([c.lat, c.lng], Math.max(map.getZoom(), 5), { duration: 0.8 });
-  setTimeout(() => detonate({ lat: c.lat, lng: c.lng }), 850);
+  const tgt = targetLatLng();
+  if (!tgt) return;
+  map.flyTo([tgt.lat, tgt.lng], Math.max(map.getZoom(), 5), { duration: 0.8 });
+  setTimeout(() => detonate(tgt), 850);
 });
 
 // ==================== CITY-HALT SIMULATOR (Layer 3 / GIS ext.) ====================
