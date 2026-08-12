@@ -119,6 +119,7 @@
           <span data-i18n="target_label">標的</span>
           <select id="target-city"></select>
         </label>
+        <div class="target-sv" id="target-sv" hidden></div>
         <button id="fire-btn" class="primary-btn fire-btn" type="button">
           <span data-i18n="fire_btn">シミュレーション実行</span>
           <span class="arrow">→</span>
@@ -152,9 +153,9 @@
         <div class="basemap-row" id="basemap-row">
           <span class="bm-label" data-i18n="basemap_label">背景地図</span>
           <div class="bm-opts" role="radiogroup">
-            <label><input type="radio" name="basemap" value="color" checked><span data-i18n="bm_color">カラー</span></label>
+            <label><input type="radio" name="basemap" value="color"><span data-i18n="bm_color">カラー</span></label>
             <label><input type="radio" name="basemap" value="terrain"><span data-i18n="bm_terrain">地形</span></label>
-            <label><input type="radio" name="basemap" value="sat"><span data-i18n="bm_sat">衛星</span></label>
+            <label><input type="radio" name="basemap" value="sat" checked><span data-i18n="bm_sat">衛星</span></label>
           </div>
         </div>
         <label class="toggle"><input type="checkbox" id="layer-gdp" checked><span data-i18n="layer_gdp">都市GDPバブル</span><span class="legend-dot" style="--sw: var(--vermillion)"></span></label>

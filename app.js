@@ -77,6 +77,8 @@ const I18N = {
     a_btn:         "この拠点に起爆",
     sv_head:       "現地の光景 — Street View",
     sv_open:       "Googleマップで開く",
+    target_sv_head:"標的の現況 — Street View",
+    sv_none:       "海上のため現地映像はありません。",
     cum_stock:     "ストック蒸発(都市GDP)",
     cum_flow:      "フロー遮断(供給網)",
     r_assets:      "被弾インフラ",
@@ -236,6 +238,8 @@ const I18N = {
     a_btn:         "Detonate at this site",
     sv_head:       "Street level — Street View",
     sv_open:       "Open in Google Maps",
+    target_sv_head:"Target now — Street View",
+    sv_none:       "No street imagery at sea.",
     cum_stock:     "Stock vaporized (metro GDP)",
     cum_flow:      "Flow severed (supply chains)",
     r_assets:      "Infrastructure struck",
@@ -362,6 +366,7 @@ function applyLang() {
   if (typeof lastAsset !== "undefined" && lastAsset) showAsset(lastAsset);
   if (guideModal && !guideModal.hidden) renderGuide();
   if (typeof populateTargets === "function") populateTargets(); // rebuild optgroup labels in the new language
+  if (typeof updateTargetPreview === "function") updateTargetPreview();
   if (typeof cityLayer !== "undefined" && cityLayer) cityLayer.eachLayer(l => l.setTooltipContent ? l.setTooltipContent(l._cityRef.name[LANG]) : null);
   // re-render hazard divIcons in the new language
   if (typeof allDetonations !== "undefined") {
@@ -665,7 +670,7 @@ if (window.NGRM_OFFLINE && window.WORLD_GEOJSON) {
     interactive: false,
   }).addTo(map);
 } else {
-  setBasemap("color");
+  setBasemap("sat");
   document.querySelectorAll('input[name="basemap"]').forEach(r => {
     r.addEventListener("change", e => { if (e.target.checked) setBasemap(e.target.value); });
   });
@@ -696,7 +701,7 @@ function renderCities() {
       const simSel = document.getElementById("sim-city");
       if (simSel) simSel.value = CITIES.indexOf(c);
       const tgtSel = document.getElementById("target-city");
-      if (tgtSel) tgtSel.value = "c:" + CITIES.indexOf(c);
+      if (tgtSel) { tgtSel.value = "c:" + CITIES.indexOf(c); if (typeof updateTargetPreview === "function") updateTargetPreview(); }
       map.flyTo([c.lat, c.lng], Math.max(map.getZoom(), 4), { duration: 0.7 });
     });
     cityLayer.addLayer(m);
@@ -797,7 +802,7 @@ function renderAssets() {
       L.DomEvent.stopPropagation(e);
       showAsset(a);
       const tgtSel = document.getElementById("target-city");
-      if (tgtSel) tgtSel.value = "a:" + ASSETS.indexOf(a);
+      if (tgtSel) { tgtSel.value = "a:" + ASSETS.indexOf(a); if (typeof updateTargetPreview === "function") updateTargetPreview(); }
       map.flyTo([a.lat, a.lng], Math.max(map.getZoom(), 4), { duration: 0.7 });
     });
     assetLayers[a.cat].addLayer(m);
@@ -2012,6 +2017,31 @@ function targetLatLng() {
   if (v.startsWith("a:")) { const a = ASSETS[+v.slice(2)]; return a && { lat: a.lat, lng: a.lng }; }
   return null;
 }
+
+// Street-level preview of the selected target — "this is what the place
+// looks like right now", shown before the strike is ever run.
+function updateTargetPreview() {
+  const box = document.getElementById("target-sv");
+  if (!box) return;
+  if (window.NGRM_OFFLINE) { box.hidden = true; return; }
+  const tgt = targetLatLng();
+  if (!tgt) { box.hidden = true; return; }
+  const v = $targetCity.value;
+  const isChoke = v.startsWith("a:") && ASSETS[+v.slice(2)] && ASSETS[+v.slice(2)].cat === "choke";
+  const open = `<a class="sv-open" href="${svOpenURL(tgt.lat, tgt.lng)}" target="_blank" rel="noopener">${t("sv_open")} ↗</a>`;
+  box.innerHTML = isChoke
+    ? `<div class="sv-headline">${t("target_sv_head")}</div><div class="sv-none">${t("sv_none")}</div>${open}`
+    : `<div class="sv-headline">${t("target_sv_head")}</div>
+       <div class="sv-box"><iframe class="sv-frame" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="${svEmbedURL(tgt.lat, tgt.lng)}"></iframe></div>${open}`;
+  box.hidden = false;
+}
+
+$targetCity?.addEventListener("change", () => {
+  updateTargetPreview();
+  const tgt = targetLatLng();
+  if (tgt) map.flyTo([tgt.lat, tgt.lng], Math.max(map.getZoom(), 4), { duration: 0.8 });
+});
+updateTargetPreview();
 
 document.getElementById("fire-btn")?.addEventListener("click", () => {
   const tgt = targetLatLng();
