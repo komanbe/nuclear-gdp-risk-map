@@ -80,6 +80,9 @@ const I18N = {
     target_sv_head:"標的の現況 — 偵察衛星ビュー",
     cum_stock:     "ストック蒸発(都市GDP)",
     cum_flow:      "フロー遮断(供給網)",
+    century_label: "100年展望(復興30年)",
+    century_def:   "復興に30年(線形回復)を仮定した逸失生産の概算: 蒸発したストック(単年GDP)×15年分+フロー遮断。制度的記憶・文化資本の恒久喪失は数値化できないため含まない——実際の世紀スケール損失はこれより大きい。",
+    ledger_head:   "喪失リスト(累積)",
     r_assets:      "被弾インフラ",
     dep_flow_label:"供給停止の配分",
     mo_unit:       "か月",
@@ -240,6 +243,9 @@ const I18N = {
     target_sv_head:"Target now — recon satellite",
     cum_stock:     "Stock vaporized (metro GDP)",
     cum_flow:      "Flow severed (supply chains)",
+    century_label: "100-year view (30-yr rebuild)",
+    century_def:   "Forgone output assuming a 30-year linear recovery: vaporized stock (one year of GDP) × 15, plus the severed flow. Permanent loss of institutional memory and cultural capital is unquantifiable and excluded — the true century-scale loss is larger.",
+    ledger_head:   "Loss ledger (cumulative)",
     r_assets:      "Infrastructure struck",
     dep_flow_label:"Allocated supply halt",
     mo_unit:       "mo",
@@ -327,6 +333,10 @@ const I18N = {
 
 let LANG = "ja";
 const WORLD_GDP_B = 105000; // $105T nominal (2023)
+// Century view: forgone output under a 30-year linear recovery ≈ area under
+// the recovery curve = 15 years of the vaporized annual stock, plus the
+// severed flow. Permanent memory/cultural losses are unquantifiable and excluded.
+const CENTURY_MULT = 15;
 
 function t(key) { return I18N[LANG][key]; }
 
@@ -1441,11 +1451,12 @@ function generateDispatch(det) {
   if (ripple && !near) cascadeBits.push(ja ? `${ripple}。` : `${ripple[0].toUpperCase()}${ripple.slice(1)}.`);
   if (cascadeBits.length) push("T+72時間", "T+72h", "cascade", cascadeBits.join(" "));
 
-  // T+2wk — world markets
+  // T+2wk — world markets, then the century-scale reckoning
   const share = totalCum / WORLD_GDP_B;
+  const century = cumulative.gdpB * CENTURY_MULT + cumulative.flowB;
   push("T+2週間", "T+2wk", "global", ja
-    ? `世界市場が再価格設定に入る。累積損失 ${fmtYen(totalCum)}（${fmtUSD(totalCum)}）——世界年GDP比 ${fmtPct(share)}、${cumulative.count} ${t("narr_detonations")}分が帳簿から消えた。`
-    : `World markets begin repricing. Cumulative loss ${fmtUSD(totalCum)} (${fmtYen(totalCum)}) — ${fmtPct(share)} of world annual GDP across ${cumulative.count} ${t("narr_detonations")}.`);
+    ? `世界市場が再価格設定に入る。累積損失 ${fmtYen(totalCum)}（${fmtUSD(totalCum)}）——世界年GDP比 ${fmtPct(share)}、${cumulative.count} ${t("narr_detonations")}分が帳簿から消えた。百年の尺度では傷はさらに開く——復興30年を仮定した逸失生産は ${fmtYen(century)}（${fmtUSD(century)}）に達し、公文書と文化資本の喪失は帳簿外に残り続ける。`
+    : `World markets begin repricing. Cumulative loss ${fmtUSD(totalCum)} (${fmtYen(totalCum)}) — ${fmtPct(share)} of world annual GDP across ${cumulative.count} ${t("narr_detonations")}. On a century scale the wound widens: forgone output under a 30-year rebuild reaches ${fmtUSD(century)} (${fmtYen(century)}), while the loss of archives and cultural capital never enters the books.`);
 
   return phases;
 }
@@ -1491,13 +1502,14 @@ const $sbStrike = document.getElementById("sb-strike");
 // flow. `display` always holds what is currently painted on screen.
 function tallyEls() {
   return {
-    big:   $resultBody.querySelector('[data-cm="big"]'),
-    sub:   $resultBody.querySelector('[data-cm="sub"]'),
-    stock: $resultBody.querySelector('[data-cm="stock"]'),
-    flow:  $resultBody.querySelector('[data-cm="flow"]'),
-    count: $resultBody.querySelector('[data-cm="count"]'),
-    pop:   $resultBody.querySelector('[data-cm="pop"]'),
-    share: $resultBody.querySelector('[data-cm="share"]'),
+    big:     $resultBody.querySelector('[data-cm="big"]'),
+    sub:     $resultBody.querySelector('[data-cm="sub"]'),
+    stock:   $resultBody.querySelector('[data-cm="stock"]'),
+    flow:    $resultBody.querySelector('[data-cm="flow"]'),
+    century: $resultBody.querySelector('[data-cm="century"]'),
+    count:   $resultBody.querySelector('[data-cm="count"]'),
+    pop:     $resultBody.querySelector('[data-cm="pop"]'),
+    share:   $resultBody.querySelector('[data-cm="share"]'),
   };
 }
 function writeTally(g, f, p, c) {
@@ -1507,6 +1519,7 @@ function writeTally(g, f, p, c) {
   e.sub.textContent   = "≈ " + fmtMoneyAlt(g + f);
   e.stock.textContent = fmtMoney(g);
   e.flow.textContent  = fmtMoney(f);
+  if (e.century) e.century.textContent = fmtMoney(g * CENTURY_MULT + f);
   e.pop.textContent   = fmtPop(p);
   e.share.textContent = fmtPct((g + f) / WORLD_GDP_B);
   if (c != null && e.count) e.count.textContent = c + " " + t("narr_detonations");
@@ -1721,9 +1734,51 @@ function runStageEffect(tag, det, instant) {
 }
 
 // -------------------- CUMULATIVE PANEL --------------------
+// Dedup destroyed cities/assets across all strikes into one loss ledger.
+function buildLedger() {
+  const cities = new Map(), assets = new Map();
+  allDetonations.forEach(d => {
+    (d.hits || []).forEach(h => {
+      const e = cities.get(h.c.name.en) || { c: h.c, loss: 0, f: 0 };
+      e.loss += h.gdpExp; e.f = Math.max(e.f, h.f);
+      cities.set(h.c.name.en, e);
+    });
+    (d.assetHits || []).forEach(h => {
+      const e = assets.get(h.a.id) || { a: h.a, loss: 0, f: 0 };
+      e.loss += h.flowLoss; e.f = Math.max(e.f, h.f);
+      assets.set(h.a.id, e);
+    });
+  });
+  return [
+    ...[...cities.values()].map(e => ({ type: "city", name: e.c.name[LANG], cat: null, loss: e.loss, f: e.f })),
+    ...[...assets.values()].map(e => ({ type: "asset", name: aname(e.a), cat: e.a.cat, loss: e.loss, f: e.f })),
+  ].sort((x, y) => y.loss - x.loss);
+}
+
 function renderCumulative(latestDet, freshStrike = false) {
   const totalLoss = cumulative.gdpB + cumulative.flowB;
   const share = totalLoss / WORLD_GDP_B;
+
+  const ledgerRows = buildLedger();
+  const LEDGER_MAX = 12;
+  const ledgerHtml = ledgerRows.length ? `
+    <hr class="rule">
+    <div class="dispatch-head">
+      <span class="dh-ch">◆</span>
+      <span>${t("ledger_head")}</span>
+    </div>
+    <ul class="ledger">
+      ${ledgerRows.slice(0, LEDGER_MAX).map(r => `
+        <li>
+          <span class="lg-ico">${r.type === "city" ? '<span class="legend-dot" style="--sw:#a8231f"></span>' : pictoSwatchSVG(r.cat, 13)}</span>
+          <span class="lg-name">${r.name}</span>
+          <span class="lg-dmg">${Math.round(r.f * 100)}%</span>
+          <span class="lg-v">${fmtMoney(r.loss)}</span>
+        </li>`).join("")}
+    </ul>
+    ${ledgerRows.length > LEDGER_MAX
+      ? `<p class="hint small ledger-more">${LANG === "ja" ? `ほか ${ledgerRows.length - LEDGER_MAX} 件` : `+ ${ledgerRows.length - LEDGER_MAX} more`}</p>`
+      : ""}` : "";
 
   const lead = `<p class="cum-lead">${t("cum_lead")}</p>`;
   const headline = `
@@ -1734,6 +1789,10 @@ function renderCumulative(latestDet, freshStrike = false) {
       <div class="dh-split">
         <div class="dh-tier"><span class="dt-k stock">${t("cum_stock")}</span><span class="dt-v" data-cm="stock">—</span></div>
         <div class="dh-tier"><span class="dt-k flow">${t("cum_flow")}</span><span class="dt-v" data-cm="flow">—</span></div>
+      </div>
+      <div class="dh-century">
+        <span class="dt-k century"><span class="term" data-def-ja="${I18N.ja.century_def}" data-def-en="${I18N.en.century_def}">${t("century_label")}</span></span>
+        <span class="dt-v dt-century" data-cm="century">—</span>
       </div>
       <div class="dh-rate">${t("jpy_rate_note")}</div>
     </div>
@@ -1751,6 +1810,7 @@ function renderCumulative(latestDet, freshStrike = false) {
         <div class="dm-v" data-cm="share">0%</div>
       </div>
     </div>
+    ${ledgerHtml}
     <hr class="rule">
     <div class="dispatch-head">
       <span class="dh-ch">●</span>

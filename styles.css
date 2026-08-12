@@ -2174,3 +2174,66 @@ body.sat-basemap .leaflet-control-attribution {
 }
 .recon-box .leaflet-container { background: #0c1116; }
 .sb-media .recon-box { height: 100%; aspect-ratio: auto; }
+
+/* =================== CENTURY VIEW ROW =================== */
+.dh-century {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 7px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+  font-size: 11.5px;
+}
+.dt-k.century { color: var(--ink-2); font-weight: 500; }
+.dt-k.century::before { content: "◼"; color: var(--earth); margin-right: 6px; font-size: 8px; }
+.dt-v.dt-century {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 14.5px;
+  color: var(--earth);
+}
+
+/* =================== LOSS LEDGER =================== */
+ul.ledger {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+  max-height: 240px;
+  overflow-y: auto;
+}
+ul.ledger li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5.5px 0;
+  border-top: 1px dotted var(--rule-2);
+  font-size: 11.8px;
+}
+ul.ledger li:first-child { border-top: none; }
+.lg-ico { flex: 0 0 15px; display: inline-flex; justify-content: center; }
+.lg-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.lg-dmg {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-4);
+  flex: 0 0 auto;
+}
+.lg-v {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--ink-2);
+  flex: 0 0 auto;
+}
+.ledger-more { margin-top: 4px; }
