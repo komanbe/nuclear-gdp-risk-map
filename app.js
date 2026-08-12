@@ -50,6 +50,10 @@ const I18N = {
     narr_detonations:"発",
     ripple_legend: "線 = 貿易依存と金融ハブ連鎖による被害の流れ。太さ/濃さ=被害額。",
     layers:        "レイヤー",
+    basemap_label: "背景地図",
+    bm_color:      "カラー",
+    bm_terrain:    "地形",
+    bm_sat:        "衛星",
     layer_gdp:     "都市GDPバブル",
     layer_port:    "港湾・物流ハブ",
     layer_factory: "工場・製造クラスタ",
@@ -203,6 +207,10 @@ const I18N = {
     narr_detonations:"strikes",
     ripple_legend: "Lines = damage flowing through trade dependency and the finance-hub channel. Thicker / more opaque = larger loss.",
     layers:        "Layers",
+    basemap_label: "Basemap",
+    bm_color:      "Color",
+    bm_terrain:    "Terrain",
+    bm_sat:        "Satellite",
     layer_gdp:     "Metro GDP bubbles",
     layer_port:    "Ports & logistics hubs",
     layer_factory: "Factory & manufacturing clusters",
@@ -596,9 +604,54 @@ const map = L.map("map", {
 }).setView([30, 15], 2);
 function invalidateMap() { setTimeout(() => map.invalidateSize(), 50); }
 
-// Basemap: satellite imagery online; a bundled vector world (WORLD_GEOJSON)
-// in the self-contained/offline build, where the CSP blocks tile requests.
+// Basemap: switchable tile styles online (colored Google-Maps-like street map
+// by default, hillshaded terrain, or satellite); a bundled vector world
+// (WORLD_GEOJSON) in the self-contained/offline build, where the CSP blocks
+// tile requests. Real Google Maps tiles would need a billed API key — the
+// Esri street style is the closest freely usable look.
+const BASEMAPS = {
+  color: {
+    dark: false, bg: "#cfe0ea",
+    make: () => [L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+      { attribution: 'Map &copy; Esri &amp; contributors', maxZoom: 18 }
+    )],
+  },
+  terrain: {
+    dark: false, bg: "#cfe0ea",
+    make: () => [L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+      { attribution: 'Map &copy; Esri &amp; contributors', maxZoom: 18 }
+    )],
+  },
+  sat: {
+    dark: true, bg: "#0c1116",
+    make: () => [
+      L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        { attribution: 'Imagery &copy; Esri &amp; contributors', maxZoom: 18 }
+      ),
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/rastertiles/dark_only_labels/{z}/{x}/{y}{r}.png",
+        { attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: "abcd", maxZoom: 19, pane: "shadowPane", opacity: 0.95 }
+      ),
+    ],
+  },
+};
+let baseLayers = [];
+
+function setBasemap(key) {
+  const def = BASEMAPS[key];
+  if (!def) return;
+  baseLayers.forEach(l => map.removeLayer(l));
+  baseLayers = def.make();
+  baseLayers.forEach(l => l.addTo(map));
+  document.body.classList.toggle("sat-basemap", def.dark);
+  document.getElementById("map").style.background = def.bg;
+}
+
 if (window.NGRM_OFFLINE && window.WORLD_GEOJSON) {
+  document.getElementById("basemap-row")?.setAttribute("hidden", "");
   document.getElementById("map").style.background = "#dbe2e6";
   L.geoJSON(window.WORLD_GEOJSON, {
     style: {
@@ -608,16 +661,10 @@ if (window.NGRM_OFFLINE && window.WORLD_GEOJSON) {
     interactive: false,
   }).addTo(map);
 } else {
-  document.body.classList.add("sat-basemap");
-  document.getElementById("map").style.background = "#0c1116";
-  L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    { attribution: 'Imagery &copy; Esri &amp; contributors', maxZoom: 18 }
-  ).addTo(map);
-  L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/rastertiles/dark_only_labels/{z}/{x}/{y}{r}.png",
-    { attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: "abcd", maxZoom: 19, pane: "shadowPane", opacity: 0.95 }
-  ).addTo(map);
+  setBasemap("color");
+  document.querySelectorAll('input[name="basemap"]').forEach(r => {
+    r.addEventListener("change", e => { if (e.target.checked) setBasemap(e.target.value); });
+  });
 }
 
 // -------------------- CITY BUBBLES --------------------

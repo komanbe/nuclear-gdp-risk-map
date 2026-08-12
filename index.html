@@ -149,6 +149,14 @@
 
       <section class="panel stagger">
         <h2><span class="panel-num">03</span><span data-i18n="layers">レイヤー</span></h2>
+        <div class="basemap-row" id="basemap-row">
+          <span class="bm-label" data-i18n="basemap_label">背景地図</span>
+          <div class="bm-opts" role="radiogroup">
+            <label><input type="radio" name="basemap" value="color" checked><span data-i18n="bm_color">カラー</span></label>
+            <label><input type="radio" name="basemap" value="terrain"><span data-i18n="bm_terrain">地形</span></label>
+            <label><input type="radio" name="basemap" value="sat"><span data-i18n="bm_sat">衛星</span></label>
+          </div>
+        </div>
         <label class="toggle"><input type="checkbox" id="layer-gdp" checked><span data-i18n="layer_gdp">都市GDPバブル</span><span class="legend-dot" style="--sw: var(--vermillion)"></span></label>
         <label class="toggle"><input type="checkbox" id="layer-port" checked>
           <span class="term" data-def-ja="港湾・物流ハブ: コンテナ港・航空貨物・鉄道結節点。都市GDPには表れにくいが、1拠点の停止が大陸間の供給網を数か月単位で寸断する。マーカーサイズ=年間取扱貨物額。" data-def-en="Ports &amp; logistics hubs — container ports, air-cargo superhubs, rail junctions. Barely visible in metro GDP, yet one halted node severs intercontinental supply for months. Marker size = annual cargo value handled.">

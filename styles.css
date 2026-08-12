@@ -2039,3 +2039,38 @@ body.sat-basemap .leaflet-control-zoom,
 body.sat-basemap .leaflet-control-attribution {
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
 }
+
+/* =================== BASEMAP SWITCHER =================== */
+.basemap-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0 9px;
+  border-bottom: 1px dotted var(--rule);
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+.bm-label { color: var(--ink-3); flex: 0 0 auto; }
+.bm-opts { display: flex; gap: 2px; margin-left: auto; }
+.bm-opts label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  border: 1px solid var(--rule);
+  padding: 3px 9px;
+  font-size: 11px;
+  color: var(--ink-2);
+  background: var(--panel);
+  transition: border-color 140ms var(--ease), color 140ms var(--ease), background 140ms var(--ease);
+}
+.bm-opts label:first-child { border-radius: 2px 0 0 2px; }
+.bm-opts label:last-child { border-radius: 0 2px 2px 0; }
+.bm-opts label:not(:first-child) { margin-left: -1px; }
+.bm-opts input { position: absolute; opacity: 0; pointer-events: none; }
+.bm-opts label:has(input:checked) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+  z-index: 1;
+}
+.bm-opts label:hover:not(:has(input:checked)) { border-color: var(--ink-3); color: var(--ink); }
