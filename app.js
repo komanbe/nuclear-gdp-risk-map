@@ -158,7 +158,7 @@ const I18N = {
       { t: "マーカーをクリックで詳細",
         b: "赤い円 = 都市GDPバブル。丸いバッジのピクトグラム = 戦略資産——錨は港湾・物流、工場マークは製造クラスタ、雫はエネルギー・資源、船は海上チョークポイント。クリックすると詳細パネルと「この拠点に起爆」ボタン。" },
       { t: "二層の損失を読む",
-        b: "「02 累積被害」に、都市GDPの〈ストック蒸発〉と供給網の〈フロー遮断〉(年間フロー額×途絶期間)を別建てで集計。被弾資産からは依存都市へ破線の波及アークが伸びる。" },
+        b: "「02 累積被害」に、都市GDPの〈ストック蒸発〉と供給網の〈フロー遮断〉(年間フロー額×途絶期間)を別建てで集計。連鎖フェーズでは、被弾資産から破線アーク、被弾都市から貿易・金融の波及網(紺の実線)が世界へ伸びる。" },
       { t: "レイヤーで整理する",
         b: "「03 レイヤー」でカテゴリごとに表示を切替。マーカーサイズは経済的な重み。" },
       { t: "核以外のシナリオ",
@@ -318,7 +318,7 @@ const I18N = {
       { t: "Click markers for detail",
         b: "Red circles = metro GDP bubbles. Round pictogram badges = strategic assets — anchor for ports & logistics, factory for manufacturing, droplet for energy & resources, ship for maritime chokepoints. Each opens a detail panel with a “detonate here” button." },
       { t: "Read the two-tier loss",
-        b: "Panel 02 books metro-GDP stock vaporized and supply-chain flow severed (annual flow × outage) separately. Struck assets draw dashed dependency arcs to the metros they feed." },
+        b: "Panel 02 books metro-GDP stock vaporized and supply-chain flow severed (annual flow × outage) separately. In the cascade phase, struck assets draw dashed dependency arcs and struck metros spin a navy trade-and-finance web across the world." },
       { t: "Organize with layers",
         b: "Panel 03 toggles each category. Marker size = economic weight." },
       { t: "Non-nuclear scenarios",
@@ -1147,6 +1147,15 @@ function detonate(pt, opts = {}) {
   const totalFlow = assetHits.reduce((s, h) => s + h.flowLoss, 0);
   const cityMatch = findNearestCity(pt, 500);
 
+  // trade/finance web from the hardest-hit metro — the "world on strings"
+  // visual, drawn at the story's cascade phase (indicative, not tallied)
+  let cityRipple = null, rippleSrc = null;
+  if (hits.length) {
+    rippleSrc = hits[0].c;
+    cityRipple = computeHaltRipple(rippleSrc, 0.9 * hits[0].f, 365).cityRipple.slice(0, 8);
+    if (!cityRipple.length) { cityRipple = null; rippleSrc = null; }
+  }
+
   // 1. FIREBALL CORE — transient pinhole
   const fireballCore = L.circleMarker(pt, {
     radius: 0, color: "#fffbea", weight: 0, fillColor: "#fffbea",
@@ -1258,6 +1267,7 @@ function detonate(pt, opts = {}) {
     pt, kt: lastKt, burst: lastBurst,
     hits, totalGDP, totalPop,
     assetHits, totalFlow,
+    cityRipple, rippleSrc,
     layer: detLayer, cityMatch,
   };
   setTimeout(() => {
@@ -1449,6 +1459,14 @@ function generateDispatch(det) {
     cascadeBits.push(ja
       ? `供給網が断面を見せる——${list} の流れが行き先を失った。`
       : `The supply web shows its cross-section — flows lose their destination: ${list}.`);
+  }
+  if (det.cityRipple && det.cityRipple.length) {
+    const t3 = det.cityRipple.slice(0, 3).map(h => ja
+      ? `${h.c.name[LANG]}へ ${fmtYen(h.loss)}`
+      : `${fmtUSD(h.loss)} to ${h.c.name[LANG]}`).join(ja ? "、" : ", ");
+    cascadeBits.push(ja
+      ? `貿易と金融の糸が世界中で引き攣れる——波及上位: ${t3}(概算)。`
+      : `The threads of trade and finance snap taut across the world — top spillovers: ${t3} (indicative).`);
   }
   if (ripple && !near) cascadeBits.push(ja ? `${ripple}。` : `${ripple[0].toUpperCase()}${ripple.slice(1)}.`);
   if (cascadeBits.length) push("T+72時間", "T+72h", "cascade", cascadeBits.join(" "));
@@ -1696,18 +1714,51 @@ function focusStage(latlngs, maxZoom) {
   }
 }
 
+// Solid navy arcs from the struck metro to its trade/finance dependents —
+// the "world on strings" web, persistent on the detonation layer.
+function drawTradeWeb(det, layer, instant) {
+  if (!det.cityRipple || !det.cityRipple.length || det._webDrawn) return;
+  det._webDrawn = true;
+  const src = det.rippleSrc;
+  const maxLoss = det.cityRipple[0].loss || 1;
+  det.cityRipple.forEach((h, i) => {
+    const ratio = h.loss / maxLoss;
+    const pts = buildArcPoints({ lat: src.lat, lng: src.lng }, h.c, 28);
+    const finalOp = 0.3 + 0.5 * ratio;
+    const line = L.polyline(pts, {
+      color: "#163a5f", weight: 0.6 + ratio * 3.0,
+      opacity: instant ? finalOp : 0, smoothFactor: 1,
+    });
+    line.addTo(layer);
+    line.bindTooltip(
+      `<b>${src.name[LANG]} → ${h.c.name[LANG]}</b><br>${LANG === "ja" ? "波及損失" : "Spillover"}: ${fmtMoney(h.loss)}`,
+      { sticky: true, direction: "top", className: "ripple-tip" }
+    );
+    if (!instant) {
+      animate({ duration: 1000, delay: 420 * i, ease: "outQuart", update: tt => line.setStyle({ opacity: finalOp * tt }) });
+      pulseAt(h.c.lat, h.c.lng, "#163a5f", 420 * i + 800, 18);
+    }
+  });
+}
+
 function runStageEffect(tag, det, instant) {
   // only the dependency arcs are persistent — when fast-forwarding, draw
   // them immediately and skip the transient pulses / camera moves.
   if (tag === "cascade") {
-    if (det.assetHits && det.assetHits.length) {
-      drawAssetDeps(det.assetHits[0], det.layer, instant);
-      if (!instant) {
+    if (det.assetHits && det.assetHits.length) drawAssetDeps(det.assetHits[0], det.layer, instant);
+    drawTradeWeb(det, det.layer, instant);
+    if (!instant) {
+      const pts = [];
+      if (det.assetHits && det.assetHits.length) {
         const a = det.assetHits[0].a;
-        const pts = [[a.lat, a.lng]];
+        pts.push([a.lat, a.lng]);
         Object.keys(a.deps || {}).forEach(cc => { const tt = depTarget(cc); if (tt) pts.push([tt.lat, tt.lng]); });
-        focusStage(pts, 5);
       }
+      if (det.cityRipple) {
+        if (det.rippleSrc) pts.push([det.rippleSrc.lat, det.rippleSrc.lng]);
+        pts.push(...det.cityRipple.map(h => [h.c.lat, h.c.lng]));
+      }
+      if (pts.length) focusStage(pts, 5);
     }
     return;
   }
@@ -2304,14 +2355,11 @@ function drawRipple(src, tops, haltPct) {
   });
 }
 
-function runSim() {
-  const idx = parseInt($simCity.value, 10);
-  const src = CITIES[idx];
-  if (!src) return;
-  const halt = parseFloat($simHalt.value) / 100;
-  const days = parseFloat($simDur.value);
+// Shared halt-ripple model: how a halted city tugs the strings of the world
+// economy through trade dependency and the finance-hub channel. Used by both
+// the shock-scenario run and the nuclear story's cascade phase.
+function computeHaltRipple(src, halt, days) {
   const durFrac = days / 365;
-
   const countryCityGDP = COUNTRY_CITY_GDP[src.cc] || src.gdp;
   const srcShareOfCountry = src.gdp / countryCityGDP;
 
@@ -2330,8 +2378,7 @@ function runSim() {
 
   // --- National: direct + partial country spillover (crude: 1.4× direct, capped at country annualized) ---
   const nationalGDP = COUNTRY_GDP[src.cc] || countryCityGDP;
-  const nationalCap = nationalGDP * durFrac * halt;
-  const nationalLoss = Math.min(direct * 1.4, nationalCap);
+  const nationalLoss = Math.min(direct * 1.4, nationalGDP * durFrac * halt);
 
   // --- Finance ripple: global credit/liquidity channel ---
   const finWeight = (src.fin || 0) / 100;
@@ -2363,7 +2410,17 @@ function runSim() {
   cityRipple.sort((a, b) => b.loss - a.loss);
 
   const tradeTotal = Object.values(tradeByCountry).reduce((a, b) => a + b, 0);
-  const worldTotal = direct + tradeTotal + globalFin;
+  return { direct, nationalLoss, globalFin, tradeTotal, worldTotal: direct + tradeTotal + globalFin, cityRipple };
+}
+
+function runSim() {
+  const idx = parseInt($simCity.value, 10);
+  const src = CITIES[idx];
+  if (!src) return;
+  const halt = parseFloat($simHalt.value) / 100;
+  const days = parseFloat($simDur.value);
+
+  const { direct, nationalLoss, globalFin, worldTotal, cityRipple } = computeHaltRipple(src, halt, days);
   const share = worldTotal / WORLD_GDP_B;
 
   // --- render ---
