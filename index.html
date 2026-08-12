@@ -74,6 +74,10 @@
       </div>
     </div>
     <div class="header-right">
+      <button id="guide-btn" class="guide-btn" type="button">
+        <span class="guide-btn-q">?</span>
+        <span data-i18n="guide_btn">使い方</span>
+      </button>
       <div class="lang-toggle" role="group" aria-label="Language">
         <button class="lang-btn active" data-lang="ja">JA</button>
         <span class="lang-sep">/</span>
@@ -130,18 +134,41 @@
         <div id="city-body"></div>
       </section>
 
+      <section class="panel stagger" id="asset-info" hidden>
+        <h2><span class="panel-num">·</span><span id="asset-name"></span><span class="asset-cat-tag" id="asset-cat"></span></h2>
+        <div id="asset-body"></div>
+      </section>
+
       <section class="panel stagger">
         <h2><span class="panel-num">03</span><span data-i18n="layers">レイヤー</span></h2>
         <label class="toggle"><input type="checkbox" id="layer-gdp" checked><span data-i18n="layer_gdp">都市GDPバブル</span><span class="legend-dot" style="--sw: var(--vermillion)"></span></label>
+        <label class="toggle"><input type="checkbox" id="layer-port" checked>
+          <span class="term" data-def-ja="港湾・物流ハブ: コンテナ港・航空貨物・鉄道結節点。都市GDPには表れにくいが、1拠点の停止が大陸間の供給網を数か月単位で寸断する。マーカーサイズ=年間取扱貨物額。" data-def-en="Ports &amp; logistics hubs — container ports, air-cargo superhubs, rail junctions. Barely visible in metro GDP, yet one halted node severs intercontinental supply for months. Marker size = annual cargo value handled.">
+            <span data-i18n="layer_port">港湾・物流ハブ</span>
+          </span>
+          <span class="legend-shape" data-cat="port" aria-hidden="true"></span>
+        </label>
+        <label class="toggle"><input type="checkbox" id="layer-factory" checked>
+          <span class="term" data-def-ja="工場・製造クラスタ: 半導体ファブ・電子機器・自動車・航空機・医薬の集積地。特に先端ファブとEUV露光装置は地理的に極度に集中しており、1拠点の喪失が世界の生産を年単位で止める。" data-def-en="Factory &amp; manufacturing clusters — semiconductor fabs, electronics, autos, aerospace, pharma. Advanced fabs and EUV lithography are so geographically concentrated that losing one site stalls global output for years.">
+            <span data-i18n="layer_factory">工場・製造クラスタ</span>
+          </span>
+          <span class="legend-shape" data-cat="factory" aria-hidden="true"></span>
+        </label>
+        <label class="toggle"><input type="checkbox" id="layer-energy" checked>
+          <span class="term" data-def-ja="エネルギー・資源: 油田・ガス処理・LNG基地・製油所・鉱山・水力。都市から離れた無人地帯に立地するものが多く、GDPバブルには映らないが、世界のエネルギー・素材フローの源泉。" data-def-en="Energy &amp; resources — oil fields, gas processing, LNG terminals, refineries, mines, hydro. Often sited far from any metro, invisible to GDP bubbles, yet the wellspring of global energy and materials flows.">
+            <span data-i18n="layer_energy">エネルギー・資源</span>
+          </span>
+          <span class="legend-shape" data-cat="energy" aria-hidden="true"></span>
+        </label>
+        <label class="toggle"><input type="checkbox" id="layer-choke" checked>
+          <span class="term" data-def-ja="海上チョークポイント: ホルムズ・マラッカ・スエズ・パナマ等。周囲に都市が無い海上でも、ここが止まれば世界の貿易が止まる——『GDPバブルが無い場所の重要性』の象徴例。" data-def-en="Maritime chokepoints — Hormuz, Malacca, Suez, Panama and peers. Open water with no city in sight, yet if traffic stops here, world trade stops — the emblematic case of value with no GDP bubble.">
+            <span data-i18n="layer_choke">海上チョークポイント</span>
+          </span>
+          <span class="legend-shape" data-cat="choke" aria-hidden="true"></span>
+        </label>
         <label class="toggle"><input type="checkbox" disabled>
           <span class="term" data-def-ja="アーカイブ / 文化的記憶の損失: 国立公文書館・図書館・宗教文書・病院記録・企業本社文書庫など、物理的に一度失えば復元できない記録の集積。『都市の制度的記憶』を定量化するレイヤー。" data-def-en="Archival / cultural memory loss — the aggregate of irreplaceable physical records (national archives, libraries, religious manuscripts, hospital records, corporate HQ document stores). Quantifies a city's institutional memory.">
             <span data-i18n="layer_memory">アーカイブ / 文化的記憶の損失</span>
-          </span>
-          <span class="badge">STUB</span>
-        </label>
-        <label class="toggle"><input type="checkbox" disabled>
-          <span class="term" data-def-ja="半導体ファブ(fabrication plant): 半導体チップを製造する工場。TSMC(台湾)、Samsung(韓国)、Intel(米)が世界の先端ロジックの大半を握る。地理的に極度に集中しており、1拠点の喪失がサプライチェーン全体を止める。" data-def-en="A semiconductor fabrication plant. A handful of sites (TSMC in Taiwan, Samsung in Korea, Intel in the US) produce most of the world's advanced logic chips. Extreme geographic concentration: loss of one site stalls the global supply chain.">
-            <span data-i18n="layer_fabs">半導体ファブ</span>
           </span>
           <span class="badge">STUB</span>
         </label>
@@ -151,7 +178,7 @@
           </span>
           <span class="badge">STUB</span>
         </label>
-        <p class="hint small" data-i18n="layers_hint">追加の負債レイヤーはスキーマに雛形を確保。Outrider 側と出典を合意次第、差し込み可能。</p>
+        <p class="hint small" data-i18n="layers_hint">戦略資産マーカーはクリックで詳細。被弾すると年間フロー額×途絶期間の『フロー遮断損失』を別建てで計上。</p>
       </section>
 
       <section class="panel stagger" id="sim-panel">
@@ -243,11 +270,40 @@
     </div>
   </main>
 
+  <!-- ============ USAGE GUIDE MODAL ============ -->
+  <div id="guide-modal" class="guide-modal" hidden role="dialog" aria-modal="true" aria-labelledby="guide-title">
+    <div class="guide-backdrop" data-guide-close></div>
+    <div class="guide-frame">
+      <div class="guide-top">
+        <span class="gt-eyebrow" data-i18n="guide_eyebrow">FIELD MANUAL · 操作手引</span>
+        <button class="guide-close" type="button" data-guide-close aria-label="Close">×</button>
+      </div>
+      <h2 id="guide-title" data-i18n="guide_title">使い方ガイド</h2>
+      <p class="guide-lead" data-i18n="guide_lead">3クリックで始められます。詳細パネルとレイヤーは読み込むほど深くなります。</p>
+
+      <ol class="guide-steps" id="guide-steps"><!-- filled by app.js (i18n) --></ol>
+
+      <div class="guide-shapes">
+        <div class="gs-title" data-i18n="guide_shapes_title">地図記号</div>
+        <div class="gs-grid" id="guide-shapes-grid"><!-- filled by app.js (i18n) --></div>
+      </div>
+
+      <div class="guide-actions">
+        <button class="splash-enter guide-ok" type="button" data-guide-close>
+          <span data-i18n="guide_close">閉じて開始</span>
+          <span class="arrow">→</span>
+        </button>
+        <span class="splash-hint" data-i18n="guide_hint">Esc でも閉じられます · 右上の「?」からいつでも再表示</span>
+      </div>
+    </div>
+  </div>
+
   <div id="flash" aria-hidden="true"></div>
   <div id="tip" class="tip" aria-hidden="true"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="cities.js"></script>
+  <script src="assets.js"></script>
   <script src="deps.js"></script>
   <script src="app.js"></script>
 </body>

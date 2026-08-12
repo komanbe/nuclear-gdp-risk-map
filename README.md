@@ -32,12 +32,24 @@ Three observations drive the design:
 
 All figures are illustrative. Production use would replace the city-point list with a **gridded GDP raster** (e.g. Kummu et al. 2018 downscaled GDP, G-Econ 4.0, or nightlights-derived economic activity) for continuous exposure estimates.
 
+## Flow tier — strategic assets (v0.2)
+
+The metro bubbles capture **stock** (accumulated GDP). A second tier captures **flow** — the sites *between* the bubbles that keep the world economy moving. ~55 curated assets in [`assets.js`](assets.js), four categories rendered as round pictogram badges with per-category layer toggles:
+
+- **Ports & logistics hubs** (anchor badge, navy) — top container ports, air-cargo superhubs, the Duisburg rail terminus.
+- **Factory & manufacturing clusters** (factory badge, earth) — advanced fabs (TSMC, Samsung, ASML), electronics assembly, autos, aerospace, pharma. Supersedes the former "semiconductor fabs" stub.
+- **Energy & resources** (droplet badge, amber) — oil/gas fields and processing, LNG, refining, critical mines, Three Gorges.
+- **Maritime chokepoints** (ship badge, green) — Hormuz, Malacca–Singapore, Suez, Panama and peers: places with **no GDP bubble at all** whose closure stops world trade.
+
+Model: a strike books `flow_busd × (recovery_mo / 12) × damage-fraction` as a **flow-disruption loss**, tallied separately from metro-GDP stock loss in the cumulative panel (no double counting — the loss is *allocated* to dependent metros along dashed dependency arcs). Damage fraction weights ring overlap by severity (severe 1.0 / thermal 0.6 / moderate 0.2). Asset figures are order-of-magnitude reference values (UNCTAD / Lloyd's List, company reports, EIA/JODI, USGS).
+
+Each strike plays out as a **story sequence** in the dispatch timeline — live-commentary log lines (`T+0s` impact → metro loss → infra down → supply-chain cascade → world markets) typed in at ~5 s per phase, with the map animating each stage in sync: city bubbles pulse, struck asset badges flash, dependency arcs crawl out at the cascade phase, and a world-scale ring closes the sequence. A first-visit guide modal (also behind the "?" header button) explains the two-tier framing and map symbols.
+
 ## Layers stubbed for drop-in
 
 Visible in the UI, disabled until data sources are agreed:
 
 - **Archival / cultural memory loss** — per-metro inventory of irreplaceable records (national archives, libraries, religious manuscripts, hospital records, corporate headquarters document stores). This is the layer that gives teeth to the "civilizational liability" framing — it makes the non-monetary portion of the loss concretely countable.
-- **Semiconductor fabs** — node-weighted exposure of the global chip supply chain.
 - **SWIFT / clearing infrastructure**, global HQ concentration, R&D spend — supporting layers for a total liability index beyond GDP.
 - **Fallout plume** conditional on prevailing winds — already present in Outrider's existing toolkit; integrate rather than re-implement.
 
