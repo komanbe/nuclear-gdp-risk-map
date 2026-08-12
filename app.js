@@ -75,6 +75,8 @@ const I18N = {
     a_src:         "出典",
     a_note:        "全損時損失 = 年間フロー額 × 途絶期間。被弾時は被害リングとの重なりから損傷率を乗算。",
     a_btn:         "この拠点に起爆",
+    sv_head:       "現地の光景 — Street View",
+    sv_open:       "Googleマップで開く",
     cum_stock:     "ストック蒸発(都市GDP)",
     cum_flow:      "フロー遮断(供給網)",
     r_assets:      "被弾インフラ",
@@ -232,6 +234,8 @@ const I18N = {
     a_src:         "Sources",
     a_note:        "Full loss = annual flow × outage duration. On a strike, scaled by the damage fraction from ring overlap.",
     a_btn:         "Detonate at this site",
+    sv_head:       "Street level — Street View",
+    sv_open:       "Open in Google Maps",
     cum_stock:     "Stock vaporized (metro GDP)",
     cum_flow:      "Flow severed (supply chains)",
     r_assets:      "Infrastructure struck",
@@ -1531,6 +1535,8 @@ function tallyAnimateTo(tgt, dur = 1800) {
 function hideStoryBar() {
   if ($storyBar) $storyBar.hidden = true;
   $storyBar?.classList.remove("sb-typing");
+  const sbMedia = document.getElementById("sb-media");
+  if (sbMedia) { sbMedia.innerHTML = ""; sbMedia.hidden = true; }
   document.getElementById("map-wrap")?.classList.remove("story-active");
 }
 
@@ -1594,6 +1600,16 @@ function startStory(det, container) {
     $sbStrike.textContent = `#${String(det.id).padStart(2, "0")} · ${placeLabel(det.cityMatch)}`;
     $sbText.textContent = "";
     document.getElementById("map-wrap")?.classList.add("story-active");
+    // street-level view of ground zero — "this is what was there"
+    const sbMedia = document.getElementById("sb-media");
+    if (sbMedia) {
+      if (!window.NGRM_OFFLINE) {
+        sbMedia.innerHTML = `<iframe class="sv-frame" referrerpolicy="no-referrer-when-downgrade" src="${svEmbedURL(det.pt.lat, det.pt.lng)}"></iframe>`;
+        sbMedia.hidden = false;
+      } else {
+        sbMedia.hidden = true;
+      }
+    }
   }
 
   const lines = [...container.querySelectorAll(".cl-line")];
@@ -1836,6 +1852,7 @@ function showCity(c) {
       <dt>${t("r_total_gdp")}</dt><dd><strong>${fmtGDP(gdpExp)}</strong></dd>
       <dt>${t("r_total_pop")}</dt><dd><strong>${fmtPop(popExp)}</strong></dd>
     </dl>
+    ${streetViewHTML(c.lat, c.lng)}
     <p class="hint small" style="margin-top:10px;">${t("c_note")}</p>
     <button class="ghost" id="city-detonate" style="margin-top:10px;">
       <span class="pdot"></span><span>${t("c_btn")}</span>
@@ -1845,6 +1862,32 @@ function showCity(c) {
   document.getElementById("city-detonate")?.addEventListener("click", () => {
     detonate({ lat: c.lat, lng: c.lng });
   });
+}
+
+// -------------------- STREET VIEW --------------------
+// Keyless Google Street View embed (legacy svembed endpoint) + the official
+// no-key Maps URL as an open-in-new-tab fallback. Hidden in the offline
+// artifact build, where the CSP blocks external iframes.
+function svEmbedURL(lat, lng) {
+  return `https://maps.google.com/maps?layer=c&cbll=${lat},${lng}&cbp=11,0,0,0,0&output=svembed&hl=${LANG}`;
+}
+function svOpenURL(lat, lng) {
+  return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
+}
+function streetViewHTML(lat, lng, linkOnly = false) {
+  if (window.NGRM_OFFLINE) return "";
+  const open = `<a class="sv-open" href="${svOpenURL(lat, lng)}" target="_blank" rel="noopener">${t("sv_open")} ↗</a>`;
+  if (linkOnly) {
+    return `<hr class="rule"><div class="sv-headline">${t("sv_head")}</div><div class="sv-linkonly">${open}</div>`;
+  }
+  return `
+    <hr class="rule">
+    <div class="sv-headline">${t("sv_head")}</div>
+    <div class="sv-box">
+      <iframe class="sv-frame" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+              src="${svEmbedURL(lat, lng)}" allowfullscreen></iframe>
+    </div>
+    ${open}`;
 }
 
 // -------------------- ASSET PANEL --------------------
@@ -1881,6 +1924,7 @@ function showAsset(a) {
       <dt>${t("a_loss1")}</dt><dd><strong>${fmtMoney(fullLoss)}</strong></dd>
     </dl>
     ${deps.length ? `<hr class="rule"><div class="ripple-heading">${t("a_deps")}</div><ul class="hits">${depHtml}</ul>` : ""}
+    ${streetViewHTML(a.lat, a.lng, a.cat === "choke")}
     <p class="hint small" style="margin-top:10px;">${t("a_note")} ${t("a_src")}: ${a.src_note}.</p>
     <button class="ghost" id="asset-detonate" style="margin-top:10px;">
       <span class="pdot"></span><span>${t("a_btn")}</span>
