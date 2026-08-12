@@ -2237,3 +2237,9 @@ ul.ledger li:first-child { border-top: none; }
   flex: 0 0 auto;
 }
 .ledger-more { margin-top: 4px; }
+
+/* =================== SCENARIO MODE VISIBILITY =================== */
+#scenario-panel[data-mode="nuclear"] .mode-shock-only { display: none !important; }
+#scenario-panel:not([data-mode="nuclear"]) .mode-nuclear-only { display: none !important; }
+#mode-chips { margin-top: 6px; }
+#scenario-panel #sim-result { margin-top: 14px; }

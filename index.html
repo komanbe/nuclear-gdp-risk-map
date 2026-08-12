@@ -94,9 +94,19 @@
   <main>
     <aside id="sidebar">
 
-      <section class="panel stagger">
+      <section class="panel stagger" id="scenario-panel" data-mode="nuclear">
         <h2><span class="panel-num">01</span><span data-i18n="scenario">シナリオ</span></h2>
-        <label class="field">
+        <div class="field">
+          <span data-i18n="mode_label">シナリオ種別</span>
+          <div class="shock-presets" id="mode-chips">
+            <button class="shock-chip active" type="button" data-mode="nuclear" data-i18n="preset_nuclear">核起爆</button>
+            <button class="shock-chip" type="button" data-mode="quake" data-halt="55" data-dur="180" data-i18n="preset_quake">大地震</button>
+            <button class="shock-chip" type="button" data-mode="npp" data-halt="30" data-dur="365" data-i18n="preset_npp">原発事故</button>
+            <button class="shock-chip" type="button" data-mode="port" data-halt="40" data-dur="90" data-i18n="preset_port">港湾封鎖</button>
+            <button class="shock-chip" type="button" data-mode="conflict" data-halt="20" data-dur="90" data-i18n="preset_conflict">地域紛争</button>
+          </div>
+        </div>
+        <label class="field mode-nuclear-only">
           <span data-i18n="yield_label">弾頭出力</span>
           <select id="yield">
             <option value="15"            data-ja="15 kt — 広島(リトルボーイ)"                data-en="15 kt — Hiroshima (Little Boy)">15 kt — 広島(リトルボーイ)</option>
@@ -108,23 +118,65 @@
             <option value="25000"         data-ja="25 Mt — B41(米退役・実配備最大級)"         data-en="25 Mt — B41 (retired, near historical ceiling)">25 Mt — B41(米退役・実配備最大級)</option>
           </select>
         </label>
-        <label class="field">
+        <label class="field mode-nuclear-only">
           <span data-i18n="burst_label">爆発方式</span>
           <select id="burst">
             <option value="air" selected  data-ja="適高度爆発(エアバースト)"                   data-en="Optimal airburst">適高度爆発(エアバースト)</option>
             <option value="ground"        data-ja="地表爆発(グラウンドバースト)"              data-en="Ground burst">地表爆発(グラウンドバースト)</option>
           </select>
         </label>
-        <label class="field">
+        <label class="field mode-nuclear-only">
           <span data-i18n="target_label">標的</span>
           <select id="target-city"></select>
         </label>
-        <div class="target-sv" id="target-sv" hidden></div>
+        <div class="target-sv mode-nuclear-only" id="target-sv" hidden></div>
+
+        <p class="roadmap-lead mode-shock-only" data-i18n="sim_lead">核・地震・原発事故・港湾封鎖・紛争 —— 原因を問わず『都市機能停止率』に統一。貿易依存(OECD ICIO 水準の近似)と金融ハブ連鎖から、世界GDPへの波及を概算。</p>
+        <label class="field mode-shock-only">
+          <span data-i18n="sim_city_label">対象都市</span>
+          <select id="sim-city"></select>
+        </label>
+        <label class="field slider-field mode-shock-only">
+          <span>
+            <span data-i18n="sim_halt_label">機能停止率</span>
+            <output id="sim-halt-val" class="slider-val">70%</output>
+          </span>
+          <input type="range" id="sim-halt" min="0" max="100" value="70" step="5">
+          <span class="slider-range">
+            <span>0%</span><span>50%</span><span>100%</span>
+          </span>
+        </label>
+        <label class="field mode-shock-only">
+          <span data-i18n="sim_duration_label">継続期間</span>
+          <select id="sim-duration">
+            <option value="7"   data-ja="1 週間"  data-en="1 week">1 週間</option>
+            <option value="30" selected data-ja="1 ヶ月"  data-en="1 month">1 ヶ月</option>
+            <option value="90"  data-ja="3 ヶ月"  data-en="3 months">3 ヶ月</option>
+            <option value="180" data-ja="6 ヶ月"  data-en="6 months">6 ヶ月</option>
+            <option value="365" data-ja="1 年"    data-en="1 year">1 年</option>
+          </select>
+        </label>
+
         <button id="fire-btn" class="primary-btn fire-btn" type="button">
           <span data-i18n="fire_btn">シミュレーション実行</span>
           <span class="arrow">→</span>
         </button>
-        <p class="hint" data-i18n="hint_click">標的は都市40+戦略資産55から選択。地図上のマーカーをクリックしても標的に設定できる。</p>
+        <p class="hint mode-nuclear-only" data-i18n="hint_click">標的は都市40+戦略資産55から選択。地図上のマーカーをクリックしても標的に設定できる。</p>
+
+        <div id="sim-result" class="mode-shock-only" hidden>
+          <dl>
+            <dt data-i18n="sim_r_direct">都市GDP損失(直接)</dt><dd><strong data-sc="direct">—</strong></dd>
+            <dt data-i18n="sim_r_national">国GDP損失</dt><dd data-sc="national">—</dd>
+            <dt data-i18n="sim_r_world">世界GDP損失(合計)</dt><dd><strong data-sc="world">—</strong></dd>
+            <dt data-i18n="sim_r_fin">金融ハブ波及</dt><dd data-sc="fin">—</dd>
+            <dt data-i18n="sim_r_share">世界GDP比</dt><dd data-sc="share">—</dd>
+          </dl>
+          <hr class="rule">
+          <div class="ripple-heading" data-i18n="sim_r_ripple">波及上位都市</div>
+          <p class="ripple-legend-hint" data-i18n="ripple_legend">線 = 貿易依存と金融ハブ連鎖による被害の流れ。太さ/濃さ=被害額。</p>
+          <ul class="hits" id="sim-ripple"></ul>
+          <p class="hint small" data-i18n="sim_r_formula">CC<sub>macro</sub> = α·直接 + β·貿易波及 + γ·金融波及(本実装は expectation を省略)。</p>
+        </div>
       </section>
 
       <section class="panel accent" id="result" hidden>
@@ -198,68 +250,8 @@
         <p class="hint small" data-i18n="layers_hint">戦略資産マーカーはクリックで詳細。被弾すると年間フロー額×途絶期間の『フロー遮断損失』を別建てで計上。</p>
       </section>
 
-      <section class="panel stagger" id="sim-panel">
-        <h2><span class="panel-num">04</span><span data-i18n="sim_title">拡張モデル · 都市停止シミュレータ</span><span class="beta-tag">BETA</span></h2>
-        <p class="roadmap-lead" data-i18n="sim_lead">核・地震・原発事故・港湾封鎖・紛争 —— 原因を問わず『都市機能停止率』に統一。貿易依存(OECD ICIO 水準の近似)と金融ハブ連鎖から、世界GDPへの波及を概算。</p>
-
-        <label class="field">
-          <span data-i18n="sim_city_label">対象都市</span>
-          <select id="sim-city"></select>
-        </label>
-
-        <label class="field slider-field">
-          <span>
-            <span data-i18n="sim_halt_label">機能停止率</span>
-            <output id="sim-halt-val" class="slider-val">70%</output>
-          </span>
-          <input type="range" id="sim-halt" min="0" max="100" value="70" step="5">
-          <span class="slider-range">
-            <span>0%</span><span>50%</span><span>100%</span>
-          </span>
-        </label>
-
-        <label class="field">
-          <span data-i18n="sim_duration_label">継続期間</span>
-          <select id="sim-duration">
-            <option value="7"   data-ja="1 週間"  data-en="1 week">1 週間</option>
-            <option value="30" selected data-ja="1 ヶ月"  data-en="1 month">1 ヶ月</option>
-            <option value="90"  data-ja="3 ヶ月"  data-en="3 months">3 ヶ月</option>
-            <option value="180" data-ja="6 ヶ月"  data-en="6 months">6 ヶ月</option>
-            <option value="365" data-ja="1 年"    data-en="1 year">1 年</option>
-          </select>
-        </label>
-
-        <div class="shock-presets">
-          <button class="shock-chip" data-halt="90" data-dur="365"  data-i18n="preset_nuclear">核起爆</button>
-          <button class="shock-chip" data-halt="55" data-dur="180"  data-i18n="preset_quake">大地震</button>
-          <button class="shock-chip" data-halt="30" data-dur="365"  data-i18n="preset_npp">原発事故</button>
-          <button class="shock-chip" data-halt="40" data-dur="60"   data-i18n="preset_port">港湾封鎖</button>
-          <button class="shock-chip" data-halt="20" data-dur="90"   data-i18n="preset_conflict">地域紛争</button>
-        </div>
-
-        <button id="sim-run" class="primary-btn">
-          <span data-i18n="sim_run">シミュレーション実行</span>
-          <span class="arrow">→</span>
-        </button>
-
-        <div id="sim-result" hidden>
-          <dl>
-            <dt data-i18n="sim_r_direct">都市GDP損失(直接)</dt><dd><strong data-sc="direct">—</strong></dd>
-            <dt data-i18n="sim_r_national">国GDP損失</dt><dd data-sc="national">—</dd>
-            <dt data-i18n="sim_r_world">世界GDP損失(合計)</dt><dd><strong data-sc="world">—</strong></dd>
-            <dt data-i18n="sim_r_fin">金融ハブ波及</dt><dd data-sc="fin">—</dd>
-            <dt data-i18n="sim_r_share">世界GDP比</dt><dd data-sc="share">—</dd>
-          </dl>
-          <hr class="rule">
-          <div class="ripple-heading" data-i18n="sim_r_ripple">波及上位都市</div>
-          <p class="ripple-legend-hint" data-i18n="ripple_legend">線 = 貿易依存と金融ハブ連鎖による被害の流れ。太さ/濃さ=被害額。</p>
-          <ul class="hits" id="sim-ripple"></ul>
-          <p class="hint small" data-i18n="sim_r_formula">CC<sub>macro</sub> = α·直接 + β·貿易波及 + γ·金融波及(本実装は expectation を省略)。</p>
-        </div>
-      </section>
-
       <section class="panel stagger">
-        <h2><span class="panel-num">05</span><span data-i18n="about">概要</span></h2>
+        <h2><span class="panel-num">04</span><span data-i18n="about">概要</span></h2>
         <p data-i18n="about_body">本プロトタイプは、都市を<b>経済と制度的記憶の密で非代替な貯蔵庫</b>として扱う。単一の起爆は、数十年にわたる複利的資本・記録・生活史を瞬時に蒸発させる —— 現行の核戦略下で潜在化し、<span class="term" data-def-ja="NPT: 核兵器不拡散条約。" data-def-en="NPT: Nuclear Non-Proliferation Treaty.">NPT</span>議論では価格付けされていない負債である。</p>
         <p class="src" data-i18n="src">都市GDP: <span class="term" data-def-ja="Brookings Institution と JPMorgan Chase が共同で発行する、都市GDP・生産性の国際比較データセット。" data-def-en="International dataset of metro-level GDP and productivity, jointly published by Brookings Institution and JPMorgan Chase.">Brookings Global Metro Monitor</span> / Oxford Economics(参考値、2022–2023)。爆発半径: <span class="term" data-def-ja="1977年版『The Effects of Nuclear Weapons』。核兵器効果の標準参考書で、本ツールの爆発半径スケーリングもここに基づく。" data-def-en="Glasstone &amp; Dolan (1977), 'The Effects of Nuclear Weapons' — standard reference; the blast scaling in this tool follows its airburst tables.">Glasstone &amp; Dolan (1977)</span>.</p>
       </section>

@@ -30,6 +30,7 @@ const I18N = {
     burst_label:   "爆発方式",
     target_label:  "標的",
     fire_btn:      "シミュレーション実行",
+    mode_label:    "シナリオ種別",
     target_group_city: "都市(GDP上位40)",
     hint_click:    "標的は都市40+戦略資産55から選択。地図上のマーカーをクリックしても標的に設定できる。",
     clear_btn:     "すべてリセット",
@@ -160,8 +161,8 @@ const I18N = {
         b: "「02 累積被害」に、都市GDPの〈ストック蒸発〉と供給網の〈フロー遮断〉(年間フロー額×途絶期間)を別建てで集計。被弾資産からは依存都市へ破線の波及アークが伸びる。" },
       { t: "レイヤーで整理する",
         b: "「03 レイヤー」でカテゴリごとに表示を切替。マーカーサイズは経済的な重み。" },
-      { t: "都市停止シミュレータ",
-        b: "「04」では核以外(地震・原発事故・港湾封鎖・紛争)も『機能停止率』に統一し、貿易依存と金融連鎖から世界GDPへの波及を概算。" },
+      { t: "核以外のシナリオ",
+        b: "「シナリオ種別」チップで地震・原発事故・港湾封鎖・紛争に切替。『機能停止率』に統一し、貿易依存と金融連鎖から世界GDPへの波及を概算。実行ボタンは同じ。" },
     ],
 
     // misc
@@ -193,6 +194,7 @@ const I18N = {
     burst_label:   "Burst type",
     target_label:  "Target",
     fire_btn:      "Run simulation",
+    mode_label:    "Scenario type",
     target_group_city: "Metros (top-40 GDP)",
     hint_click:    "Pick from 40 metros + 55 strategic assets. Clicking a marker on the map also sets it as the target.",
     clear_btn:     "Reset all",
@@ -319,8 +321,8 @@ const I18N = {
         b: "Panel 02 books metro-GDP stock vaporized and supply-chain flow severed (annual flow × outage) separately. Struck assets draw dashed dependency arcs to the metros they feed." },
       { t: "Organize with layers",
         b: "Panel 03 toggles each category. Marker size = economic weight." },
-      { t: "City-halt simulator",
-        b: "Panel 04 unifies non-nuclear shocks (earthquake, NPP accident, port blockade, conflict) into a halt rate and estimates the world-GDP ripple." },
+      { t: "Non-nuclear scenarios",
+        b: "The scenario-type chips switch to earthquake, NPP accident, port blockade, or conflict — unified into a halt rate with a world-GDP ripple estimate. Same run button." },
     ],
 
     lang_code:     "en",
@@ -2154,6 +2156,7 @@ $targetCity?.addEventListener("change", () => {
 updateTargetPreview();
 
 document.getElementById("fire-btn")?.addEventListener("click", () => {
+  if (scenarioMode !== "nuclear") { runSim(); return; }
   const tgt = targetLatLng();
   if (!tgt) return;
   map.flyTo([tgt.lat, tgt.lng], Math.max(map.getZoom(), 5), { duration: 0.8 });
@@ -2165,7 +2168,6 @@ const $simCity   = document.getElementById("sim-city");
 const $simHalt   = document.getElementById("sim-halt");
 const $simHaltVal= document.getElementById("sim-halt-val");
 const $simDur    = document.getElementById("sim-duration");
-const $simRun    = document.getElementById("sim-run");
 const $simResult = document.getElementById("sim-result");
 const $simRipple = document.getElementById("sim-ripple");
 
@@ -2191,13 +2193,23 @@ populateSimCity();
 
 $simHalt.addEventListener("input", () => { $simHaltVal.textContent = $simHalt.value + "%"; });
 
-document.querySelectorAll(".shock-chip").forEach(btn => {
+// -------------------- SCENARIO MODE (one set, one run button) --------------------
+// The old standalone panel 04 is folded into panel 01: the chips pick the
+// scenario type, the fields swap accordingly, and the single simulation
+// button dispatches to the strike story or the city-halt ripple model.
+const $scenarioPanel = document.getElementById("scenario-panel");
+let scenarioMode = "nuclear";
+document.querySelectorAll("#mode-chips .shock-chip").forEach(btn => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".shock-chip").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll("#mode-chips .shock-chip").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
-    $simHalt.value = btn.getAttribute("data-halt");
-    $simHaltVal.textContent = $simHalt.value + "%";
-    $simDur.value = btn.getAttribute("data-dur");
+    scenarioMode = btn.getAttribute("data-mode");
+    if ($scenarioPanel) $scenarioPanel.setAttribute("data-mode", scenarioMode);
+    if (scenarioMode !== "nuclear") {
+      const h = btn.getAttribute("data-halt"), d = btn.getAttribute("data-dur");
+      if (h) { $simHalt.value = h; $simHaltVal.textContent = h + "%"; }
+      if (d) $simDur.value = d;
+    }
   });
 });
 
@@ -2386,10 +2398,7 @@ function runSim() {
   drawRipple(src, top, parseFloat($simHalt.value));
 }
 
-$simRun.addEventListener("click", runSim);
-
-// When clicking a city bubble, also set it as simulator source
-document.addEventListener("DOMContentLoaded", () => {});
+// (the shared simulation button in panel 01 dispatches to runSim in shock modes)
 
 // initial language apply (in case of EN query or first render)
 applyLang();
