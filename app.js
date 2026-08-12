@@ -28,7 +28,9 @@ const I18N = {
     scenario:      "シナリオ",
     yield_label:   "弾頭出力",
     burst_label:   "爆発方式",
-    hint_click:    "地図上の任意の点をクリックすると起爆。リセットまで何発でも積み上がる。都市バブル・戦略資産マーカーをクリックすると詳細を表示。",
+    target_label:  "標的都市",
+    fire_btn:      "起爆する",
+    hint_click:    "地図上の任意の点を直接クリックしても起爆できる。都市バブル・戦略資産マーカーをクリックすると詳細を表示。",
     clear_btn:     "すべてリセット",
 
     result:        "累積被害",
@@ -99,7 +101,7 @@ const I18N = {
 
     // fig / legend
     fig_label_idle: "入力待ち",
-    fig_body_idle:  "左パネルで弾頭出力を選び、地図上の任意の点をクリックすると起爆をシミュレート。世界GDP上位40都市の実効メトロ円(ストック)と、港湾・工場・資源・チョークポイント約55拠点(フロー)への被害を二層で計算します。",
+    fig_body_idle:  "「01 シナリオ」で弾頭と標的都市を選び「起爆する」——または地図上の任意の点をクリック。世界GDP上位40都市(ストック)と戦略資産約55拠点(フロー)への被害を二層で計算し、起爆後は地図下部に実況が流れます。",
     legend_title:   "被害リング",
     legend_severe:  "5 psi · 深刻な構造破壊",
     legend_thermal: "3度熱傷",
@@ -139,8 +141,8 @@ const I18N = {
     guide_steps: [
       { t: "弾頭を設定する",
         b: "左パネル「01 シナリオ」で弾頭出力(15 kt〜25 Mt)と爆発方式を選ぶ。" },
-      { t: "地図をクリックで起爆",
-        b: "任意の地点をクリック。被害リングと爆心マークはリセットまで何発でも積み上がる。" },
+      { t: "起爆する",
+        b: "「01 シナリオ」の「起爆する」ボタン——または地図の任意地点をクリック。被害リングと爆心マークはリセットまで何発でも積み上がる。" },
       { t: "マーカーをクリックで詳細",
         b: "赤い円 = 都市GDPバブル。丸いバッジのピクトグラム = 戦略資産——錨は港湾・物流、工場マークは製造クラスタ、雫はエネルギー・資源、船は海上チョークポイント。クリックすると詳細パネルと「この拠点に起爆」ボタン。" },
       { t: "二層の損失を読む",
@@ -178,7 +180,9 @@ const I18N = {
     scenario:      "Scenario",
     yield_label:   "Warhead yield",
     burst_label:   "Burst type",
-    hint_click:    "Click the map to detonate — strikes accumulate until you reset. Click a metro bubble for its exposure profile.",
+    target_label:  "Target metro",
+    fire_btn:      "DETONATE",
+    hint_click:    "You can also strike any point by clicking the map directly. Click a metro bubble or asset marker for its profile.",
     clear_btn:     "Reset all",
 
     result:        "Cumulative damage",
@@ -248,7 +252,7 @@ const I18N = {
     src:           'Metro GDP: <span class="term" data-def-ja="Brookings Institution と JPMorgan Chase が共同で発行する、都市GDP・生産性の国際比較データセット。" data-def-en="International dataset of metro-level GDP and productivity, jointly published by Brookings Institution and JPMorgan Chase.">Brookings Global Metro Monitor</span> / Oxford Economics (indicative, 2022–2023). Blast radii: <span class="term" data-def-ja="1977年版『The Effects of Nuclear Weapons』。核兵器効果の標準参考書。本ツールの爆発半径スケーリングもここに基づく。" data-def-en="Glasstone &amp; Dolan (1977), ‘The Effects of Nuclear Weapons’ — standard reference; the blast scaling in this tool follows its airburst tables.">Glasstone &amp; Dolan (1977)</span>. Strategic assets: UNCTAD / Lloyd\'s List, company reports, EIA/JODI, USGS (all indicative).',
 
     fig_label_idle: "Awaiting input",
-    fig_body_idle:  "Select a yield in the left panel, then click any point on the map. Damage is computed on two tiers: the effective discs of the top 40 metros (stock) and ~55 strategic assets — ports, factories, resources, chokepoints (flow).",
+    fig_body_idle:  "Pick a warhead and target metro in panel 01 and hit DETONATE — or click any point on the map. Damage is computed on two tiers (metro stock + strategic-asset flow) and the live commentary plays along the bottom of the map.",
     legend_title:   "Damage rings",
     legend_severe:  "5 psi · severe structural damage",
     legend_thermal: "3rd-degree burns",
@@ -285,8 +289,8 @@ const I18N = {
     guide_steps: [
       { t: "Set the warhead",
         b: "In panel 01, choose a yield (15 kt – 25 Mt) and burst type." },
-      { t: "Click the map to detonate",
-        b: "Strike any point. Damage rings and epicenter marks accumulate until you reset." },
+      { t: "Detonate",
+        b: "Use the DETONATE button in panel 01 — or click any point on the map. Damage rings and epicenter marks accumulate until you reset." },
       { t: "Click markers for detail",
         b: "Red circles = metro GDP bubbles. Round pictogram badges = strategic assets — anchor for ports & logistics, factory for manufacturing, droplet for energy & resources, ship for maritime chokepoints. Each opens a detail panel with a “detonate here” button." },
       { t: "Read the two-tier loss",
@@ -1107,11 +1111,13 @@ function detonate(pt, opts = {}) {
     done: () => shockLayer.removeLayer(epiHalo)
   });
 
-  // 4. DAMAGE RINGS — persistent, go on detLayer
+  // 4. DAMAGE RINGS — persistent, go on detLayer.
+  // Staged across the impact phase (severe → thermal → moderate) so the
+  // spread reads as a story beat, not a single burst.
   const ringSpecs = [
-    { km: r.moderate, color: "#ae8b13", fill: "#ae8b13", fillOpacity: 0.08, weight: 1.2, delay: 300, dur: 860 },
-    { km: r.thermal,  color: "#c47418", fill: "#c47418", fillOpacity: 0.10, weight: 1.2, delay: 440, dur: 860 },
-    { km: r.severe,   color: "#c1292e", fill: "#c1292e", fillOpacity: 0.20, weight: 1.5, delay: 580, dur: 860 },
+    { km: r.moderate, color: "#ae8b13", fill: "#ae8b13", fillOpacity: 0.08, weight: 1.2, delay: 3000, dur: 1500 },
+    { km: r.thermal,  color: "#c47418", fill: "#c47418", fillOpacity: 0.10, weight: 1.2, delay: 1600, dur: 1500 },
+    { km: r.severe,   color: "#c1292e", fill: "#c1292e", fillOpacity: 0.20, weight: 1.5, delay: 300,  dur: 1400 },
   ];
   ringSpecs.forEach(spec => {
     const ring = L.circle(pt, {
@@ -1402,10 +1408,23 @@ function cascadeHTML(phases) {
 // comment while the map plays the matching stage — city bubbles pulse, the
 // struck asset flashes, dependency arcs crawl out, then a world-scale ring.
 const PHASE_MS = 5000;
+const TAG_COLOR = { impact: "#a8231f", metro: "#8b5a1a", survey: "#6a6f77", infra: "#163a5f", cascade: "#2d5a3f", global: "#1a1d22" };
 let storyTimers = [];
 let storyTypers = [];
 let storyPending = [];
 let storyDet = null;
+
+const $storyBar = document.getElementById("story-bar");
+const $sbTag    = document.getElementById("sb-tag");
+const $sbT      = document.getElementById("sb-t");
+const $sbText   = document.getElementById("sb-text");
+const $sbStrike = document.getElementById("sb-strike");
+
+function hideStoryBar() {
+  if ($storyBar) $storyBar.hidden = true;
+  $storyBar?.classList.remove("sb-typing");
+  document.getElementById("map-wrap")?.classList.remove("story-active");
+}
 
 function cancelStory(finalize) {
   storyTimers.forEach(id => clearTimeout(id));
@@ -1424,6 +1443,7 @@ function cancelStory(finalize) {
   }
   storyPending = [];
   storyDet = null;
+  hideStoryBar();
   const chip = document.getElementById("live-chip");
   if (chip) chip.hidden = true;
 }
@@ -1433,16 +1453,20 @@ function typeLine(p) {
   p.el.classList.remove("cl-pending");
   p.el.classList.add("cl-typing");
   p.el.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  const dur = 1600, start = performance.now();
+  $storyBar?.classList.add("sb-typing");
+  const dur = 2400, start = performance.now();
   xEl.textContent = "";
   // progress is time-based so throttled timers (hidden tab) still finish on schedule
   const iv = setInterval(() => {
     const prog = Math.min(1, (performance.now() - start) / dur);
-    xEl.textContent = p.full.slice(0, Math.ceil(p.full.length * prog));
+    const sliced = p.full.slice(0, Math.ceil(p.full.length * prog));
+    xEl.textContent = sliced;
+    if ($sbText) $sbText.textContent = sliced;
     if (prog >= 1) {
       clearInterval(iv);
       p.el.classList.remove("cl-typing");
       p.el.classList.add("cl-done");
+      $storyBar?.classList.remove("sb-typing");
       p.typed = true;
     }
   }, 66);
@@ -1454,17 +1478,32 @@ function startStory(det, container) {
   storyDet = det;
   const chip = document.getElementById("live-chip");
   if (chip) chip.hidden = false;
+
+  // prominent commentary bar at the bottom of the map
+  if ($storyBar) {
+    $storyBar.hidden = false;
+    $sbStrike.textContent = `#${String(det.id).padStart(2, "0")} · ${placeLabel(det.cityMatch)}`;
+    $sbText.textContent = "";
+    document.getElementById("map-wrap")?.classList.add("story-active");
+  }
+
   const lines = [...container.querySelectorAll(".cl-line")];
   lines.forEach(l => l.classList.add("cl-pending"));
   storyPending = lines.map(l => ({
     el: l,
     tag: l.getAttribute("data-tag"),
+    t: l.querySelector(".cl-t")?.textContent || "",
     full: l.querySelector(".cl-x").textContent,
     typed: false, staged: false,
   }));
   storyPending.forEach((p, i) => {
     storyTimers.push(setTimeout(() => {
       p.staged = true;
+      if ($sbTag) {
+        $sbTag.textContent = CASCADE_TAG_LABEL[p.tag][LANG];
+        $sbTag.style.setProperty("--sbc", TAG_COLOR[p.tag]);
+        $sbT.textContent = p.t;
+      }
       runStageEffect(p.tag, det, false);
       typeLine(p);
     }, 700 + i * PHASE_MS));
@@ -1472,8 +1511,9 @@ function startStory(det, container) {
   storyTimers.push(setTimeout(() => {
     const c = document.getElementById("live-chip");
     if (c) c.hidden = true;
+    hideStoryBar();
     storyDet = null; storyPending = [];
-  }, 700 + storyPending.length * PHASE_MS));
+  }, 700 + storyPending.length * PHASE_MS + 1800));
 }
 
 // transient expanding ring used by stage effects
@@ -1764,6 +1804,33 @@ document.getElementById("layer-gdp").addEventListener("change", e => {
     if (e.target.checked) map.addLayer(assetLayers[cat]);
     else map.removeLayer(assetLayers[cat]);
   });
+});
+
+// -------------------- FIRE BUTTON (panel 01) --------------------
+const $targetCity = document.getElementById("target-city");
+function populateTargetCity() {
+  if (!$targetCity) return;
+  $targetCity.innerHTML = "";
+  [...CITIES]
+    .map((c, i) => ({ c, i }))
+    .sort((a, b) => b.c.gdp - a.c.gdp)
+    .forEach(({ c, i }) => {
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.setAttribute("data-ja", c.name.ja);
+      opt.setAttribute("data-en", c.name.en);
+      opt.textContent = c.name[LANG];
+      if (c.name.en === "Tokyo") opt.selected = true;
+      $targetCity.appendChild(opt);
+    });
+}
+populateTargetCity();
+
+document.getElementById("fire-btn")?.addEventListener("click", () => {
+  const c = CITIES[parseInt($targetCity.value, 10)];
+  if (!c) return;
+  map.flyTo([c.lat, c.lng], Math.max(map.getZoom(), 5), { duration: 0.8 });
+  setTimeout(() => detonate({ lat: c.lat, lng: c.lng }), 850);
 });
 
 // ==================== CITY-HALT SIMULATOR (Layer 3 / GIS ext.) ====================

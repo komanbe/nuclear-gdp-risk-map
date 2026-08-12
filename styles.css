@@ -1944,3 +1944,84 @@ ul.hits .bar.bar-flow::after { background: var(--navy); }
   line-height: 1;
   animation: caretBlink 900ms steps(1) infinite;
 }
+
+/* =================== FIRE BUTTON (panel 01) =================== */
+.fire-btn {
+  width: 100%;
+  justify-content: center;
+  background: var(--vermillion);
+  border-color: var(--vermillion);
+  margin-top: 2px;
+}
+.fire-btn:hover { background: #8e1d1a; border-color: #8e1d1a; }
+
+/* =================== STORY BAR (live commentary under the map) =================== */
+.story-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: min(680px, calc(100% - 32px));
+  background: rgba(253, 252, 248, 0.97);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--vermillion);
+  box-shadow: var(--shadow-lg);
+  padding: 10px 16px 12px;
+  z-index: 1200;
+}
+.sb-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-family: var(--mono);
+}
+.sb-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--vermillion);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 1.5px 6px;
+}
+.sb-live .lc-dot { font-size: 7px; animation: caretBlink 900ms steps(1) infinite; }
+.sb-tag {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #fff;
+  background: var(--sbc, var(--ink));
+  border-radius: 2px;
+  padding: 2px 8px;
+}
+.sb-t { font-size: 10px; color: var(--ink-3); }
+.sb-strike {
+  margin-left: auto;
+  font-size: 9.5px;
+  color: var(--ink-4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sb-text {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink);
+  min-height: 46px;
+}
+.story-bar.sb-typing .sb-text::after {
+  content: "\258D";
+  color: var(--vermillion);
+  margin-left: 1px;
+  animation: caretBlink 640ms steps(1) infinite;
+}
+#map-wrap.story-active #fig { opacity: 0; pointer-events: none; transition: opacity 220ms var(--ease); }
+
+@media (max-width: 820px) {
+  .story-bar { bottom: 8px; width: calc(100% - 16px); }
+  .sb-text { font-size: 12.5px; min-height: 40px; }
+}

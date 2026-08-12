@@ -115,7 +115,15 @@
             <option value="ground"        data-ja="地表爆発(グラウンドバースト)"              data-en="Ground burst">地表爆発(グラウンドバースト)</option>
           </select>
         </label>
-        <p class="hint" data-i18n="hint_click">地図上の任意の点をクリックすると起爆。都市バブルをクリックすると単独の露出プロファイルを表示。</p>
+        <label class="field">
+          <span data-i18n="target_label">標的都市</span>
+          <select id="target-city"></select>
+        </label>
+        <button id="fire-btn" class="primary-btn fire-btn" type="button">
+          <span data-i18n="fire_btn">起爆する</span>
+          <span class="arrow">→</span>
+        </button>
+        <p class="hint" data-i18n="hint_click">地図上の任意の点を直接クリックしても起爆できる。都市バブル・戦略資産マーカーをクリックすると詳細を表示。</p>
       </section>
 
       <section class="panel accent" id="result" hidden>
@@ -251,6 +259,16 @@
 
     <div id="map-wrap">
       <div id="map"></div>
+
+      <div id="story-bar" class="story-bar" hidden aria-live="polite">
+        <div class="sb-head">
+          <span class="sb-live"><span class="lc-dot">●</span>LIVE</span>
+          <span class="sb-tag" id="sb-tag">—</span>
+          <span class="sb-t" id="sb-t">—</span>
+          <span class="sb-strike" id="sb-strike">—</span>
+        </div>
+        <div class="sb-text" id="sb-text"></div>
+      </div>
 
       <figcaption id="fig">
         <span class="fig-num">
